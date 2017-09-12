@@ -46,10 +46,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #endif
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*Dirty hack, keep in sync with mediastreamer2/include/mediastream.h */
 #ifndef PAYLOAD_TYPE_FLAG_CAN_RECV
 #define PAYLOAD_TYPE_FLAG_CAN_RECV	PAYLOAD_TYPE_USER_FLAG_1
@@ -98,7 +94,9 @@ typedef enum {
 #define SAL_MEDIA_DESCRIPTION_FORCE_STREAM_RECONSTRUCTION	(1<<6) /* use force graph reconstruction*/
 #define SAL_MEDIA_DESCRIPTION_ICE_RESTART_DETECTED			(1<<7)
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 const char* sal_transport_to_string(SalTransport transport);
 SalTransport sal_transport_parse(const char*);
@@ -153,6 +151,10 @@ void sal_set_log_handler(BctbxLogFunc log_handler);
 void sal_set_user_pointer(Sal *sal, void *user_data);
 void *sal_get_user_pointer(const Sal *sal);
 
+#ifdef __cplusplus
+}
+#endif
+
 
 typedef enum {
 	SalAudio,
@@ -160,7 +162,7 @@ typedef enum {
 	SalText,
 	SalOther
 } SalStreamType;
-const char* sal_stream_type_to_string(SalStreamType type);
+
 
 typedef enum{
 	SalProtoRtpAvp,
@@ -171,7 +173,6 @@ typedef enum{
 	SalProtoUdpTlsRtpSavpf,
 	SalProtoOther
 }SalMediaProto;
-const char* sal_media_proto_to_string(SalMediaProto type);
 
 typedef enum{
 	SalStreamSendRecv,
@@ -179,8 +180,18 @@ typedef enum{
 	SalStreamRecvOnly,
 	SalStreamInactive
 }SalStreamDir;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+const char* sal_stream_type_to_string(SalStreamType type);
+const char* sal_media_proto_to_string(SalMediaProto type);
 const char* sal_stream_dir_to_string(SalStreamDir type);
 
+#ifdef __cplusplus
+}
+#endif
 
 #define SAL_ENDPOINT_CANDIDATE_MAX 2
 
@@ -282,9 +293,17 @@ typedef struct SalStreamDescription{
 	SalMulticastRole multicast_role;
 } SalStreamDescription;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 const char *sal_multicast_role_to_string(SalMulticastRole role);
 const char *sal_stream_description_get_type_as_string(const SalStreamDescription *desc);
 const char *sal_stream_description_get_proto_as_string(const SalStreamDescription *desc);
+
+#ifdef __cplusplus
+}
+#endif
 
 #define SAL_MEDIA_DESCRIPTION_MAX_STREAMS 8
 
@@ -319,6 +338,10 @@ typedef struct SalMessage{
 
 #define SAL_MEDIA_DESCRIPTION_MAX_MESSAGE_ATTRIBUTES 5
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 SalMediaDescription *sal_media_description_new(void);
 SalMediaDescription * sal_media_description_ref(SalMediaDescription *md);
 void sal_media_description_unref(SalMediaDescription *md);
@@ -345,6 +368,10 @@ bool_t sal_media_description_has_dtls(const SalMediaDescription *md);
 bool_t sal_media_description_has_zrtp(const SalMediaDescription *md);
 bool_t sal_media_description_has_ipv6(const SalMediaDescription *md);
 int sal_media_description_get_nb_active_streams(const SalMediaDescription *md);
+
+#ifdef __cplusplus
+}
+#endif
 
 struct SalOpBase;
 typedef void (*SalOpReleaseCb)(struct SalOpBase *op);
@@ -434,7 +461,15 @@ typedef enum SalPresenceStatus{
 struct _SalPresenceModel;
 typedef struct _SalPresenceModel SalPresenceModel;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 const char* sal_presence_status_to_string(const SalPresenceStatus status);
+
+#ifdef __cplusplus
+}
+#endif
 
 typedef enum SalReferStatus{
 	SalReferTrying,
@@ -562,7 +597,9 @@ typedef struct SalCallbacks{
 	SalOnNotifyResponse on_notify_response;
 }SalCallbacks;
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 SalAuthInfo* sal_auth_info_new(void);
 SalAuthInfo* sal_auth_info_clone(const SalAuthInfo* auth_info);
@@ -740,7 +777,20 @@ void sal_op_set_entity_tag(SalOp *op, const char* entity_tag);
 /*set the event header, for used with out of dialog SIP notify*/
 void sal_op_set_event(SalOp *op, const char *event);
 
+#ifdef __cplusplus
+}
+#endif
+
 /*Call API*/
+
+#ifdef __cplusplus
+int sal_call_set_custom_body(SalOp *op, const std::shared_ptr<SalCustomBody> &body);
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int sal_call_set_local_media_description(SalOp *h, SalMediaDescription *desc);
 int sal_call(SalOp *h, const char *from, const char *to);
 int sal_call_notify_ringing(SalOp *h, bool_t early_media);
@@ -826,6 +876,10 @@ int sal_notify_close(SalOp *op);
 int sal_publish(SalOp *op, const char *from, const char *to, const char*event_name, int expires, const SalBodyHandler *body);
 int sal_op_unpublish(SalOp *op);
 
+#ifdef __cplusplus
+}
+#endif
+
 /*privacy, must be in sync with LinphonePrivacyMask*/
 typedef enum _SalPrivacy {
 	SalPrivacyNone=0x0,
@@ -838,14 +892,26 @@ typedef enum _SalPrivacy {
 } SalPrivacy;
 typedef  unsigned int SalPrivacyMask;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 const char* sal_privacy_to_string(SalPrivacy  privacy);
 void sal_op_set_privacy(SalOp* op,SalPrivacyMask privacy);
 SalPrivacyMask sal_op_get_privacy(const SalOp* op);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 
 #define payload_type_set_number(pt,n)		(pt)->user_data=(void*)((intptr_t)n);
 #define payload_type_get_number(pt)		((int)(intptr_t)(pt)->user_data)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*misc*/
 void sal_get_default_local_ip(Sal *sal, int address_family, char *ip, size_t iplen);
