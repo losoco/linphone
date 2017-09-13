@@ -373,6 +373,40 @@ int sal_media_description_get_nb_active_streams(const SalMediaDescription *md);
 }
 #endif
 
+typedef struct _SalMimeType {
+	int ref;
+	char *type;
+	char *subtype;
+} SalMimeType;
+
+typedef struct _SalCustomBody {
+	int ref;
+	SalMimeType *type;
+	size_t data_length;
+	char *raw_data;
+} SalCustomBody;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+SalMimeType *sal_mime_type_new(const char *type, const char *subtype);
+SalMimeType *sal_mime_type_copy(const SalMimeType *mime_type);
+SalMimeType *sal_mime_type_ref(SalMimeType *mime_type);
+void sal_mime_type_unref(SalMimeType *mime_type);
+
+SalCustomBody *sal_custom_body_new(SalMimeType *type);
+SalCustomBody *sal_custom_body_new_with_buffer_copy(SalMimeType *type, const char *raw_data, size_t data_length);
+SalCustomBody *sal_custom_body_new_with_buffer_moving(SalMimeType *type, char *raw_data, size_t data_length);
+SalCustomBody *sal_custom_body_ref(SalCustomBody *body);
+void sal_custom_body_unref(SalCustomBody *body);
+void sal_custom_body_set_buffer_by_copy(SalCustomBody *body, const char *buffer, size_t length);
+void sal_custom_body_set_buffer_by_moving(SalCustomBody *body, char *buffer, size_t length);
+
+#ifdef __cplusplus
+}
+#endif
+
 struct SalOpBase;
 typedef void (*SalOpReleaseCb)(struct SalOpBase *op);
 
@@ -394,6 +428,7 @@ typedef struct SalOpBase{
 	char *remote_contact;
 	SalMediaDescription *local_media;
 	SalMediaDescription *remote_media;
+	SalCustomBody *custom_body;
 	void *user_pointer;
 	const char* call_id;
 	char* realm;
@@ -782,16 +817,12 @@ void sal_op_set_event(SalOp *op, const char *event);
 #endif
 
 /*Call API*/
-
-#ifdef __cplusplus
-int sal_call_set_custom_body(SalOp *op, const std::shared_ptr<SalCustomBody> &body);
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 int sal_call_set_local_media_description(SalOp *h, SalMediaDescription *desc);
+int sal_call_set_local_custom_body(SalOp *op, SalCustomBody *body);
 int sal_call(SalOp *h, const char *from, const char *to);
 int sal_call_notify_ringing(SalOp *h, bool_t early_media);
 /*accept an incoming call or, during a call accept a reINVITE*/

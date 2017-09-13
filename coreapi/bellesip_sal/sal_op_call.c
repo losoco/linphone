@@ -21,6 +21,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include <bctoolbox/defs.h>
 
+#define SIP_MESSAGE_BODY_LIMIT 16*1024 // 16kB
+
 static int extract_sdp(SalOp* op,belle_sip_message_t* message,belle_sdp_session_description_t** session_desc, SalReason *error);
 
 /*used for calls terminated before creation of a dialog*/
@@ -100,41 +102,58 @@ static void sdp_process(SalOp *h){
 	}
 }
 
-static int set_sdp(belle_sip_message_t *msg,belle_sdp_session_description_t* session_desc) {
-	belle_sip_header_content_type_t* content_type ;
-	belle_sip_header_content_length_t* content_length;
-	belle_sip_error_code error = BELLE_SIP_BUFFER_OVERFLOW;
-	size_t length = 0;
-
-	if (session_desc) {
-		size_t bufLen = 2048;
-		size_t hardlimit = 16*1024; /* 16k SDP limit seems reasonable */
-		char* buff = reinterpret_cast<char *>(belle_sip_malloc(bufLen));
-		content_type = belle_sip_header_content_type_create("application","sdp");
-
-		/* try to marshal the description. This could go higher than 2k so we iterate */
-		while( error != BELLE_SIP_OK && bufLen <= hardlimit && buff != NULL){
-			error = belle_sip_object_marshal(BELLE_SIP_OBJECT(session_desc),buff,bufLen,&length);
-			if( error != BELLE_SIP_OK ){
-				bufLen *= 2;
-				length  = 0;
-				buff = reinterpret_cast<char *>(belle_sip_realloc(buff,bufLen));
-			}
-		}
-		/* give up if hard limit reached */
-		if (error != BELLE_SIP_OK || buff == NULL) {
-			ms_error("Buffer too small (%d) or not enough memory, giving up SDP", (int)bufLen);
-			return -1;
-		}
-
-		content_length = belle_sip_header_content_length_create(length);
-		belle_sip_message_add_header(msg,BELLE_SIP_HEADER(content_type));
-		belle_sip_message_add_header(msg,BELLE_SIP_HEADER(content_length));
-		belle_sip_message_assign_body(msg,buff,length);
-		return 0;
-	} else {
+static int set_custom_body(belle_sip_message_t *msg, const SalCustomBody *body) {
+	if (body->data_length > SIP_MESSAGE_BODY_LIMIT) {
+		bctbx_error("trying to add a body greater than %dkB to message [%p]", SIP_MESSAGE_BODY_LIMIT/1024, msg);
 		return -1;
 	}
+	if (body->data_length == 0 || body->raw_data == NULL) {
+		bctbx_error("trying to add an empty custom body to message [%p]", msg);
+		return -1;
+	}
+	
+	belle_sip_header_content_type_t *content_type = belle_sip_header_content_type_create(body->type->type, body->type->subtype);
+	belle_sip_header_content_length_t *content_length = belle_sip_header_content_length_create(body->data_length);
+	belle_sip_message_add_header(msg, BELLE_SIP_HEADER(content_type));
+	belle_sip_message_add_header(msg, BELLE_SIP_HEADER(content_length));
+	
+	char *buffer = bctbx_new(char, body->data_length);
+	memcpy(buffer, body->raw_data, body->data_length);
+	belle_sip_message_assign_body(msg, buffer, body->data_length);
+	
+	return 0;
+}
+
+static int set_sdp(belle_sip_message_t *msg,belle_sdp_session_description_t* session_desc) {
+	belle_sip_error_code error = BELLE_SIP_BUFFER_OVERFLOW;
+	size_t length = 0;
+	
+	if (session_desc == NULL) return -1;
+
+	size_t bufLen = 2048;
+	char *buff = reinterpret_cast<char *>(belle_sip_malloc(bufLen));
+
+	/* try to marshal the description. This could go higher than 2k so we iterate */
+	while( error != BELLE_SIP_OK && bufLen <= SIP_MESSAGE_BODY_LIMIT && buff != NULL){
+		error = belle_sip_object_marshal(BELLE_SIP_OBJECT(session_desc),buff,bufLen,&length);
+		if( error != BELLE_SIP_OK ){
+			bufLen *= 2;
+			length  = 0;
+			buff = reinterpret_cast<char *>(belle_sip_realloc(buff,bufLen));
+		}
+	}
+	/* give up if hard limit reached */
+	if (error != BELLE_SIP_OK || buff == NULL) {
+		ms_error("Buffer too small (%d) or not enough memory, giving up SDP", (int)bufLen);
+		return -1;
+	}
+	
+	SalMimeType *mimetype = sal_mime_type_new("application", "sdp");
+	SalCustomBody *body = sal_custom_body_new_with_buffer_moving(mimetype, buff, length);
+	set_custom_body(msg, body);
+	sal_custom_body_unref(body);
+
+	return 0;
 }
 static int set_sdp_from_desc(belle_sip_message_t *msg, const SalMediaDescription *desc){
 	int err;
@@ -733,10 +752,13 @@ static void process_request_event(void *op_base, const belle_sip_request_event_t
 
 /*Call API*/
 int sal_call_set_local_media_description(SalOp *op, SalMediaDescription *desc){
-	if (desc)
-		sal_media_description_ref(desc);
-	if (op->base.local_media)
-		sal_media_description_unref(op->base.local_media);
+	if (op->base.custom_body) {
+		bctbx_error("cannot set local media description on SalOp [%p] because a custom body is already set", op);
+		return -1;
+	}
+	
+	if (desc) sal_media_description_ref(desc);
+	if (op->base.local_media) sal_media_description_unref(op->base.local_media);
 	op->base.local_media=desc;
 
 	if (op->base.remote_media){
@@ -748,6 +770,16 @@ int sal_call_set_local_media_description(SalOp *op, SalMediaDescription *desc){
 			op->sdp_answer=NULL;
 		}
 	}
+	return 0;
+}
+
+int sal_call_set_local_custom_body(SalOp *op, SalCustomBody *body) {
+	if (op->base.local_media) {
+		bctbx_error("cannot set custom body on SalOp [%p] because a local media description is already set", op);
+		return -1;
+	}
+	if (op->base.custom_body) sal_custom_body_unref(op->base.custom_body);
+	op->base.custom_body = sal_custom_body_ref(body ? body : NULL);
 	return 0;
 }
 
@@ -769,7 +801,10 @@ static void sal_op_fill_invite(SalOp *op, belle_sip_request_t* invite) {
 	if (op->base.local_media){
 		op->sdp_offering=TRUE;
 		set_sdp_from_desc(BELLE_SIP_MESSAGE(invite),op->base.local_media);
-	}else op->sdp_offering=FALSE;
+	} else op->sdp_offering=FALSE;
+	if (op->base.custom_body) {
+		set_custom_body(BELLE_SIP_MESSAGE(invite), op->base.custom_body);
+	}
 	return;
 }
 
