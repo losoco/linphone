@@ -459,6 +459,19 @@ static void unsupported_method(belle_sip_server_transaction_t* server_transactio
 	return;
 }
 
+static SalCustomBody *extract_body(belle_sip_message_t *message) {
+	const char *body_str = belle_sip_message_get_body(message);
+	belle_sip_header_content_type_t *content_type = belle_sip_message_get_header_by_type(message, belle_sip_header_content_type_t);
+	belle_sip_header_content_length_t *content_length = belle_sip_message_get_header_by_type(message, belle_sip_header_content_length_t);
+	if (!(body_str && content_type && content_length)) return NULL;
+	const char *type_str = belle_sip_header_content_type_get_type(content_type);
+	const char *subtype_str = belle_sip_header_content_type_get_subtype(content_type);
+	size_t length = belle_sip_header_content_length_get_content_length(content_length);
+	SalMimeType *mime_type = sal_mime_type_new(type_str, subtype_str);
+	SalCustomBody *body = sal_custom_body_new_with_buffer_copy(mime_type, body_str, length);
+	return body;
+}
+
 /*
  * Extract the sdp from a sip message.
  * If there is no body in the message, the session_desc is set to null, 0 is returned.
@@ -466,41 +479,38 @@ static void unsupported_method(belle_sip_server_transaction_t* server_transactio
  *
 **/
 static int extract_sdp(SalOp *op, belle_sip_message_t* message,belle_sdp_session_description_t** session_desc, SalReason *error) {
-	const char *body;
-	belle_sip_header_content_type_t* content_type;
-
-	if (op&&op->sdp_handling == SalOpSDPSimulateError){
+	*session_desc = NULL;
+	*error = SalReasonNone;
+	
+	if (op && op->sdp_handling == SalOpSDPSimulateError) {
 		ms_error("Simulating SDP parsing error for op %p", op);
-		*session_desc=NULL;
-		*error=SalReasonNotAcceptable;
+		*error = SalReasonNotAcceptable;
 		return -1;
-	} else if( op && op->sdp_handling == SalOpSDPSimulateRemove){
+	}
+
+	if (op && op->sdp_handling == SalOpSDPSimulateRemove) {
 		ms_error("Simulating no SDP for op %p", op);
-		*session_desc = NULL;
 		return 0;
 	}
 
-	body = belle_sip_message_get_body(message);
-	if(body == NULL) {
-		*session_desc = NULL;
-		return 0;
+	SalCustomBody *body = extract_body(message);
+	if (body == NULL) return 0;
+
+	if (strcmp("application", body->type->type) != 0 || strcmp("sdp", body->type->subtype) != 0) {
+		sal_custom_body_unref(body);
+		*error = SalReasonUnsupportedContent;
+		return -1;
 	}
 
-	content_type = belle_sip_message_get_header_by_type(message,belle_sip_header_content_type_t);
-	if (content_type){
-		if (strcmp("application",belle_sip_header_content_type_get_type(content_type))==0
-			&& strcmp("sdp",belle_sip_header_content_type_get_subtype(content_type))==0) {
-			*session_desc=belle_sdp_session_description_parse(body);
-			if (*session_desc==NULL) {
-				ms_error("Failed to parse SDP message.");
-				*error=SalReasonNotAcceptable;
-				return -1;
-			}
-		}else{
-			*error=SalReasonUnsupportedContent;
-			return -1;
-		}
-	}else *session_desc=NULL;
+	*session_desc = belle_sdp_session_description_parse(body->raw_data);
+	sal_custom_body_unref(body);
+	
+	if (*session_desc == NULL) {
+		ms_error("Failed to parse SDP message.");
+		*error = SalReasonNotAcceptable;
+		return -1;
+	}
+
 	return 0;
 }
 
