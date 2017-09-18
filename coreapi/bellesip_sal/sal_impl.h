@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "belle-sip/belle-sip.h"
 #include "belle-sip/belle-sdp.h"
 
+#if 0
 struct Sal{
 	MSFactory *factory;
 	SalCallbacks callbacks;
@@ -64,13 +65,16 @@ typedef enum SalOpState {
 	,SalOpStateTerminating /*this state is used to wait until a proceeding state, so we can send the cancel*/
 	,SalOpStateTerminated
 }SalOpState;
+#endif
 
 const char* sal_op_state_to_string(SalOpState value);
 
+#if 0
 typedef enum SalOpDir {
 	SalOpDirIncoming=0
 	,SalOpDirOutgoing
 }SalOpDir;
+
 typedef enum SalOpType {
 	SalOpUnknown,
 	SalOpRegister,
@@ -80,9 +84,10 @@ typedef enum SalOpType {
 	SalOpPublish,
 	SalOpSubscribe
 }SalOpType;
+#endif
 
 const char* sal_op_type_to_string(SalOpType type);
-
+#if 0
 struct SalOp{
 	SalOpBase base;
 	const belle_sip_listener_callbacks_t *callbacks;
@@ -116,6 +121,7 @@ struct SalOp{
 	bool_t supports_session_timers;
 	bool_t op_released;
 };
+#endif
 
 
 belle_sdp_session_description_t * media_description_to_sdp(const SalMediaDescription *sal);
@@ -126,17 +132,23 @@ belle_sip_request_t* sal_op_build_request(SalOp *op,const char* method);
 void sal_op_call_fill_cbs(SalOp*op);
 void set_or_update_dialog(SalOp* op, belle_sip_dialog_t* dialog);
 
+#if 0
 /*return reffed op*/
 SalOp* sal_op_ref(SalOp* op);
 /*return null, destroy op if ref count =0*/
 void* sal_op_unref(SalOp* op);
 void sal_op_release_impl(SalOp *op);
+#endif
 
 void sal_op_set_replaces(SalOp* op,belle_sip_header_replaces_t* replaces);
 void sal_op_set_remote_ua(SalOp*op,belle_sip_message_t* message);
+#if 0
 int sal_op_send_request(SalOp* op, belle_sip_request_t* request);
+#endif
 int sal_op_send_request_with_expires(SalOp* op, belle_sip_request_t* request,int expires);
+#if 0
 void sal_op_resend_request(SalOp* op, belle_sip_request_t* request);
+#endif
 int sal_op_send_and_create_refresher(SalOp* op,belle_sip_request_t* req, int expires,belle_sip_refresher_listener_t listener );
 belle_sip_response_t *sal_op_create_response_from_request(SalOp *op, belle_sip_request_t *req, int code);
 
@@ -164,8 +176,10 @@ void sal_op_process_refer(SalOp *op, const belle_sip_request_event_t *event, bel
 void sal_op_call_process_notify(SalOp *op, const belle_sip_request_event_t *event, belle_sip_server_transaction_t *tr);
 /*create SalAuthInfo by copying username and realm from suth event*/
 SalAuthInfo* sal_auth_info_create(belle_sip_auth_event_t* event) ;
+#if 0
 void sal_add_pending_auth(Sal *sal, SalOp *op);
 void sal_remove_pending_auth(Sal *sal, SalOp *op);
+#endif
 void sal_add_presence_info(SalOp *op, belle_sip_message_t *notify, SalPresenceModel *presence);
 
 belle_sip_response_t *sal_create_response_from_request(Sal *sal, belle_sip_request_t *req, int code);

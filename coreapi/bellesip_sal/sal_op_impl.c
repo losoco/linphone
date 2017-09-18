@@ -18,6 +18,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "sal_impl.h"
 
+#if 0
+
 /*create an operation */
 SalOp * sal_op_new(Sal *sal){
 	SalOp *op=ms_new0(SalOp,1);
@@ -35,6 +37,8 @@ void sal_op_kill_dialog(SalOp *op) {
 	belle_sip_dialog_delete(op->dialog);
 }
 
+#endif
+
 void sal_op_release(SalOp *op){
 	/*if in terminating state, keep this state because it means we are waiting for a response to be able to terminate the operation.*/
 	if (op->state!=SalOpStateTerminating)
@@ -49,6 +53,7 @@ void sal_op_release(SalOp *op){
 	sal_op_unref(op);
 }
 
+#if 0
 void sal_op_release_impl(SalOp *op){
 	ms_message("Destroying op [%p] of type [%s]",op,sal_op_type_to_string(op->type));
 	if (op->pending_auth_transaction) belle_sip_object_unref(op->pending_auth_transaction);
@@ -94,6 +99,7 @@ void sal_op_cancel_authentication(SalOp *h){
 SalAuthInfo * sal_op_get_auth_requested(SalOp *op){
 	return op->auth_info;
 }
+#endif
 
 belle_sip_header_contact_t* sal_op_create_contact(SalOp *op){
 	belle_sip_header_contact_t* contact_header;
@@ -274,11 +280,13 @@ int sal_op_send_request_with_expires(SalOp* op, belle_sip_request_t* request,int
 	return sal_op_send_request(op,request);
 }
 
+#if 0
 void sal_op_resend_request(SalOp* op, belle_sip_request_t* request) {
 	belle_sip_header_cseq_t* cseq=(belle_sip_header_cseq_t*)belle_sip_message_get_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_CSEQ);
 	belle_sip_header_cseq_set_seq_number(cseq,belle_sip_header_cseq_get_seq_number(cseq)+1);
 	sal_op_send_request(op,request);
 }
+#endif
 
 static void add_headers(SalOp *op, belle_sip_header_t *h, belle_sip_message_t *msg){
 
@@ -307,6 +315,7 @@ void _sal_op_add_custom_headers(SalOp *op, belle_sip_message_t *msg){
 	}
 }
 
+#if 0
 static int _sal_op_send_request_with_contact(SalOp* op, belle_sip_request_t* request, bool_t add_contact) {
 	belle_sip_client_transaction_t* client_transaction;
 	belle_sip_provider_t* prov=op->base.root->prov;
@@ -415,6 +424,7 @@ int sal_op_send_request(SalOp* op, belle_sip_request_t* request)  {
 
 	return _sal_op_send_request_with_contact(op, request,need_contact);
 }
+#endif
 
 int sal_reason_to_sip_code(SalReason r){
 	int ret=500;
@@ -672,11 +682,14 @@ void set_or_update_dialog(SalOp* op, belle_sip_dialog_t* dialog) {
 	}
 	sal_op_unref(op);
 }
+
+#if 0
 /*return reffed op*/
 SalOp* sal_op_ref(SalOp* op) {
 	op->ref++;
 	return op;
 }
+
 /*return null, destroy op if ref count =0*/
 void* sal_op_unref(SalOp* op) {
 	op->ref--;
@@ -687,6 +700,7 @@ void* sal_op_unref(SalOp* op) {
 	}
 	return NULL;
 }
+#endif
 
 int sal_op_send_and_create_refresher(SalOp* op,belle_sip_request_t* req, int expires,belle_sip_refresher_listener_t listener ) {
 	if (sal_op_send_request_with_expires(op,req,expires)==0) {
@@ -749,12 +763,14 @@ void sal_op_assign_recv_headers(SalOp *op, belle_sip_message_t *incoming){
 	}
 }
 
+#if 0
 const char *sal_op_get_remote_contact(const SalOp *op){
 	/*
 	 * remote contact is filled in process_response
 	 */
 	return op->base.remote_contact;
 }
+#endif
 
 SalBodyHandler * sal_op_get_body_handler(SalOp *op, belle_sip_message_t *msg) {
 	belle_sip_body_handler_t *body_handler = belle_sip_message_get_body_handler(msg);
@@ -783,6 +799,7 @@ bool_t sal_op_is_secure(const SalOp* op) {
 	return from && to && strcasecmp("sips",sal_address_get_scheme(from))==0 && strcasecmp("sips",sal_address_get_scheme(to))==0;
 }
 
+#if 0
 void sal_op_set_manual_refresher_mode(SalOp *op, bool_t enabled){
 	op->manual_refresher=enabled;
 }
@@ -836,6 +853,7 @@ void sal_op_stop_refreshing(SalOp *op){
 		belle_sip_refresher_stop(op->refresher);
 	}
 }
+#endif
 
 void sal_call_set_sdp_handling(SalOp *h, SalOpSDPHandling handling)  {
 	if (handling != SalOpSDPNormal) ms_message("Enabling special SDP handling for SalOp[%p]!", h);
@@ -849,9 +867,11 @@ bool_t sal_op_cnx_ip_to_0000_if_sendonly_enabled(SalOp *op) {
 	return op->cnx_ip_to_0000_if_sendonly_enabled;
 }
 
+#if 0
 bool_t sal_op_is_forked_of(const SalOp *op1, const SalOp *op2){
 	return op1->base.call_id && op2->base.call_id && strcmp(op1->base.call_id, op2->base.call_id) == 0;
 }
+
 int sal_op_refresh(SalOp *op) {
 	if (op->refresher) {
 		belle_sip_refresher_refresh(op->refresher,belle_sip_refresher_get_expires(op->refresher));
@@ -870,6 +890,7 @@ void sal_op_set_event(SalOp *op, const char *eventname){
 	}
 	op->event = header;
 }
+#endif
 
 const char* sal_op_get_public_address(SalOp *op, int *port) {
 	if (op && op->refresher) {
@@ -885,6 +906,7 @@ const char* sal_op_get_local_address(SalOp *op, int *port) {
 	return NULL;
 }
 
+#if 0
 char* sal_op_get_dialog_id(const SalOp *op) {
 	if (op->dialog != NULL) {
 		return ms_strdup_printf("%s;to-tag=%s;from-tag=%s", ((SalOpBase*)op)->call_id,
@@ -892,4 +914,5 @@ char* sal_op_get_dialog_id(const SalOp *op) {
 	}
 	return NULL;
 }
+#endif
 

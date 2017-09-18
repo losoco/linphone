@@ -57,7 +57,9 @@ void sal_op_set_privacy_from_message(SalOp* op,belle_sip_message_t* msg) {
 		}
 	}
 }
+#if 0
 static void set_tls_properties(Sal *ctx);
+#endif
 
 void sal_enable_log(){
 	sal_set_log_level(ORTP_MESSAGE);
@@ -93,6 +95,8 @@ void sal_set_log_handler(BctbxLogFunc log_handler) {
 	_belle_sip_log_handler = log_handler;
 	belle_sip_set_log_handler(log_handler);
 }
+
+#if 0
 void sal_add_pending_auth(Sal *sal, SalOp *op){
 	if (bctbx_list_find(sal->pending_auths,op)==NULL){
 		sal->pending_auths=bctbx_list_append(sal->pending_auths,op);
@@ -108,6 +112,7 @@ void sal_remove_pending_auth(Sal *sal, SalOp *op){
 		}
 	}
 }
+#endif
 
 void sal_process_authentication(SalOp *op) {
 	belle_sip_request_t* initial_request=belle_sip_transaction_get_request((belle_sip_transaction_t*)op->pending_auth_transaction);
@@ -527,6 +532,7 @@ void *sal_get_user_pointer(const Sal *sal){
 	return sal->up;
 }
 
+#if 0
 static void unimplemented_stub(void){
 	ms_warning("Unimplemented SAL callback");
 }
@@ -582,7 +588,6 @@ void sal_set_callbacks(Sal *ctx, const SalCallbacks *cbs){
 	if (ctx->callbacks.on_expire==NULL)
 		ctx->callbacks.on_expire=(SalOnExpire)unimplemented_stub;
 }
-
 
 
 void sal_uninit(Sal* sal){
@@ -708,6 +713,7 @@ void sal_append_stack_string_to_user_agent(Sal *ctx) {
 	belle_sip_header_user_agent_add_product(ctx->user_agent, stack_string);
 }
 
+
 /*keepalive period in ms*/
 void sal_set_keepalive_period(Sal *ctx,unsigned int value){
 	const belle_sip_list_t* iterator;
@@ -720,6 +726,7 @@ void sal_set_keepalive_period(Sal *ctx,unsigned int value){
 		}
 	}
 }
+
 int sal_set_tunnel(Sal *ctx, void *tunnelclient) {
 #ifdef TUNNEL_ENABLED
 	ctx->tunnel_client=tunnelclient;
@@ -728,6 +735,7 @@ int sal_set_tunnel(Sal *ctx, void *tunnelclient) {
 	return -1;
 #endif
 }
+
 
 /**
  * returns keepalive period in ms
@@ -816,6 +824,8 @@ int sal_iterate(Sal *sal){
 	belle_sip_stack_sleep(sal->stack,0);
 	return 0;
 }
+#endif
+
 bctbx_list_t * sal_get_pending_auths(Sal *sal){
 	return bctbx_list_copy(sal->pending_auths);
 }
@@ -826,6 +836,7 @@ void sal_get_default_local_ip(Sal *sal, int address_family, char *ip, size_t ipl
 	ms_error("sal_get_default_local_ip() is deprecated.");
 }
 
+#if 0
 const char *sal_get_root_ca(Sal* ctx) {
 	return ctx->root_ca;
 }
@@ -839,6 +850,7 @@ int sal_reset_transports(Sal *ctx){
 void sal_set_dscp(Sal *ctx, int dscp){
 	belle_sip_stack_set_default_dscp(ctx->stack,dscp);
 }
+#endif
 
 void  sal_set_send_error(Sal *sal,int value) {
 	 belle_sip_stack_set_send_error(sal->stack,value);
@@ -936,9 +948,11 @@ const char* sal_op_type_to_string(const SalOpType type) {
 	}
 }
 
+#if 0
 void sal_use_dates(Sal *ctx, bool_t enabled){
 	ctx->use_dates=enabled;
 }
+#endif
 
 int sal_auth_compute_ha1(const char* userid,const char* realm,const char* password, char ha1[33]) {
 	return belle_sip_auth_helper_compute_ha1(userid, realm, password, ha1);
@@ -1040,6 +1054,7 @@ SalCustomSdpAttribute * sal_custom_sdp_attribute_clone(const SalCustomSdpAttribu
 	return (SalCustomSdpAttribute *)belle_sip_object_ref((belle_sdp_session_description_t *)csa);
 }
 
+#if 0
 void sal_set_uuid(Sal *sal, const char *uuid){
 	if (sal->uuid){
 		ms_free(sal->uuid);
@@ -1158,6 +1173,7 @@ void sal_remove_supported_tag(Sal *ctx, const char* tag){
 		make_supported_header(ctx);
 	}
 }
+#endif
 
 
 
@@ -1176,6 +1192,7 @@ int sal_get_refresher_retry_after(const Sal *sal) {
 	return sal->refresher_retry_after;
 }
 
+#if 0
 void sal_enable_auto_contacts(Sal *ctx, bool_t enabled){
 	ctx->auto_contacts=enabled;
 }
@@ -1187,6 +1204,7 @@ void sal_enable_test_features(Sal*ctx, bool_t enabled){
 void sal_use_no_initial_route(Sal *ctx, bool_t enabled){
 	ctx->no_initial_route=enabled;
 }
+#endif
 
 belle_sip_resolver_context_t * sal_resolve_a(Sal* sal, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data){
 	return belle_sip_stack_resolve_a(sal->stack,name,port,family,cb,data);
@@ -1314,10 +1332,11 @@ void sal_end_background_task(unsigned long id){
 	belle_sip_end_background_task(id);
 }
 
-
+#if 0
 void sal_enable_sip_update_method(Sal *ctx,bool_t value) {
 	ctx->enable_sip_update=value;
 }
+#endif
 
 void sal_default_set_sdp_handling(Sal *sal, SalOpSDPHandling sdp_handling_method)  {
 	if (sdp_handling_method != SalOpSDPNormal ) ms_message("Enabling special SDP handling for all new SalOp in Sal[%p]!", sal);
@@ -1481,6 +1500,7 @@ void *sal_get_stack_impl(Sal *sal) {
 	return sal->stack;
 }
 
+#if 0
 bool_t sal_is_content_type_supported(const Sal *sal, const char *content_type) {
 	bctbx_list_t *item;
 	for (item = sal->supported_content_types; item != NULL; item = bctbx_list_next(item)) {
@@ -1495,3 +1515,4 @@ void sal_add_content_type_support(Sal *sal, const char *content_type) {
 		sal->supported_content_types = bctbx_list_append(sal->supported_content_types, ms_strdup(content_type));
 	}
 }
+#endif

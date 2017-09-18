@@ -57,7 +57,7 @@ typedef struct Sal Sal;
 
 struct SalOp;
 
-typedef struct SalOp SalOp;
+typedef stract SalOp SalOp;
 
 struct SalAddress;
 
@@ -410,35 +410,6 @@ void sal_custom_body_set_buffer_by_moving(SalCustomBody *body, char *buffer, siz
 struct SalOpBase;
 typedef void (*SalOpReleaseCb)(struct SalOpBase *op);
 
-/*this structure must be at the first byte of the SalOp structure defined by implementors*/
-typedef struct SalOpBase{
-	Sal *root;
-	char *route; /*or request-uri for REGISTER*/
-	MSList* route_addresses; /*list of SalAddress* */
-	SalAddress* contact_address;
-	char *from;
-	SalAddress* from_address;
-	char *to;
-	SalAddress* to_address;
-	char *origin;
-	SalAddress* origin_address;
-	SalAddress* diversion_address;
-	char *remote_ua;
-	SalAddress* remote_contact_address;
-	char *remote_contact;
-	SalMediaDescription *local_media;
-	SalMediaDescription *remote_media;
-	SalCustomBody *custom_body;
-	void *user_pointer;
-	const char* call_id;
-	char* realm;
-	SalAddress* service_route; /*as defined by rfc3608, might be a list*/
-	SalCustomHeader *sent_custom_headers;
-	SalCustomHeader *recv_custom_headers;
-	char* entity_tag; /*as defined by rfc3903 (I.E publih)*/
-	SalOpReleaseCb release_cb;
-} SalOpBase;
-
 
 typedef enum SalReason{
 	SalReasonNone, /*no error, please leave first so that it takes 0 value*/
@@ -690,6 +661,7 @@ void sal_signing_key_delete(belle_sip_signing_key_t *key);
 
 
 
+#if 0
 void sal_set_callbacks(Sal *ctx, const SalCallbacks *cbs);
 int sal_listen_port(Sal *ctx, const char *addr, int port, SalTransport tr, int is_tunneled);
 int sal_get_listening_port(Sal *ctx, SalTransport tr);
@@ -740,6 +712,7 @@ void sal_use_no_initial_route(Sal *ctx, bool_t enabled);
 int sal_iterate(Sal *sal);
 MSList * sal_get_pending_auths(Sal *sal);
 
+
 /*create an operation */
 SalOp * sal_op_new(Sal *sal);
 
@@ -767,8 +740,10 @@ void* sal_op_unref(SalOp* op);
 
 void sal_op_authenticate(SalOp *h, const SalAuthInfo *info);
 void sal_op_cancel_authentication(SalOp *h);
+
 void sal_op_set_user_pointer(SalOp *h, void *up);
 SalAuthInfo * sal_op_get_auth_requested(SalOp *h);
+
 const char *sal_op_get_from(const SalOp *op);
 const SalAddress *sal_op_get_from_address(const SalOp *op);
 const char *sal_op_get_to(const SalOp *op);
@@ -798,6 +773,7 @@ void sal_op_set_manual_refresher_mode(SalOp *op, bool_t enabled);
 int sal_op_get_address_family(SalOp *op);
 /*returns TRUE if there is no pending request that may block a future one */
 bool_t sal_op_is_idle(SalOp *op);
+#endif
 
 const SalErrorInfo *sal_error_info_none(void);
 LINPHONE_PUBLIC const SalErrorInfo *sal_op_get_error_info(const SalOp *op);
@@ -807,10 +783,12 @@ void sal_error_info_init_to_null(SalErrorInfo *sei);
 void sal_error_info_set(SalErrorInfo *ei, SalReason reason, const char *protocol, int code, const char *status_string, const char *warning);
 
 /*entity tag used for publish (see RFC 3903)*/
+#if 0
 const char *sal_op_get_entity_tag(const SalOp* op);
 void sal_op_set_entity_tag(SalOp *op, const char* entity_tag);
 /*set the event header, for used with out of dialog SIP notify*/
 void sal_op_set_event(SalOp *op, const char *event);
+#endif
 
 #ifdef __cplusplus
 }

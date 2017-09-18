@@ -587,6 +587,7 @@ int sal_media_description_equals(const SalMediaDescription *md1, const SalMediaD
 	return result;
 }
 
+#if 0
 static void assign_address(SalAddress** address, const char *value){
 	if (*address){
 		sal_address_destroy(*address);
@@ -657,9 +658,11 @@ void sal_op_set_route(SalOp *op, const char *route){
 	assign_string(&op_base->route,route_string); \
 	if(route_string) ms_free(route_string);
 }
+
 const bctbx_list_t* sal_op_get_route_addresses(const SalOp *op) {
 	return ((SalOpBase*)op)->route_addresses;
 }
+
 void sal_op_set_route_address(SalOp *op, const SalAddress *address){
 	char* address_string=sal_address_as_string(address); /*can probably be optimized*/
 	sal_op_set_route(op,address_string);
@@ -703,14 +706,17 @@ void sal_op_set_diversion_address(SalOp *op, const SalAddress *diversion){
 void sal_op_set_user_pointer(SalOp *op, void *up){
 	((SalOpBase*)op)->user_pointer=up;
 }
+#endif
 
 Sal *sal_op_get_sal(const SalOp *op){
 	return ((SalOpBase*)op)->root;
 }
 
+#if 0
 const char *sal_op_get_from(const SalOp *op){
 	return ((SalOpBase*)op)->from;
 }
+
 const SalAddress *sal_op_get_from_address(const SalOp *op){
 	return ((SalOpBase*)op)->from_address;
 }
@@ -742,6 +748,7 @@ const char *sal_op_get_proxy(const SalOp *op){
 const char *sal_op_get_network_origin(const SalOp *op){
 	return ((SalOpBase*)op)->origin;
 }
+
 const char* sal_op_get_call_id(const SalOp *op) {
 	return  ((SalOpBase*)op)->call_id;
 }
@@ -750,6 +757,7 @@ void __sal_op_init(SalOp *b, Sal *sal){
 	memset(b,0,sizeof(SalOpBase));
 	((SalOpBase*)b)->root=sal;
 }
+#endif
 
 void __sal_op_set_network_origin(SalOp *op, const char *origin){
 	SET_PARAM(op,origin);
@@ -767,6 +775,7 @@ void __sal_op_set_network_origin_address(SalOp *op, SalAddress *origin){
 	ms_free(address_string);
 }
 
+#if 0
 void __sal_op_free(SalOp *op){
 	SalOpBase *b=(SalOpBase *)op;
 	if (b->from_address){
@@ -849,6 +858,7 @@ void __sal_op_free(SalOp *op){
 	}
 	ms_free(op);
 }
+#endif
 
 SalAuthInfo* sal_auth_info_new() {
 	return ms_new0(SalAuthInfo,1);
@@ -937,15 +947,18 @@ const char* sal_reason_to_string(const SalReason reason) {
 	default: return "Unkown reason";
 	}
 }
+#if 0
 const SalAddress* sal_op_get_service_route(const SalOp *op) {
 	return ((SalOpBase*)op)->service_route;
 }
+
 void sal_op_set_service_route(SalOp *op,const SalAddress* service_route) {
 	if (((SalOpBase*)op)->service_route)
 		sal_address_destroy(((SalOpBase*)op)->service_route);
 
 	((SalOpBase*)op)->service_route=service_route?sal_address_clone(service_route):NULL;
 }
+#endif
 
 const char* sal_presence_status_to_string(const SalPresenceStatus status) {
 	switch (status) {
@@ -1019,6 +1032,7 @@ int sal_lines_get_value(const char *data, const char *key, char *value, size_t v
 	return FALSE;
 }
 
+#if 0
 const char *sal_op_get_entity_tag(const SalOp* op) {
 	SalOpBase* op_base = (SalOpBase*)op;
 	return op_base->entity_tag;
@@ -1035,3 +1049,4 @@ void sal_op_set_entity_tag(SalOp *op, const char* entity_tag) {
 	else
 		op_base->entity_tag = NULL;
 }
+#endif
