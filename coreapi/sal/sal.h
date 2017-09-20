@@ -799,6 +799,7 @@ void sal_op_set_event(SalOp *op, const char *event);
 extern "C" {
 #endif
 
+#if 0
 int sal_call_set_local_media_description(SalOp *h, SalMediaDescription *desc);
 int sal_call_set_local_custom_body(SalOp *op, SalCustomBody *body);
 int sal_call(SalOp *h, const char *from, const char *to);
@@ -846,6 +847,7 @@ void sal_call_set_replaces(SalOp *op, const char *call_id, const char *from_tag,
 LINPHONE_PUBLIC void sal_default_set_sdp_handling(Sal* h, SalOpSDPHandling handling_method) ;
 /* Second version: for a specific call*/
 LINPHONE_PUBLIC void sal_call_set_sdp_handling(SalOp *h, SalOpSDPHandling handling) ;
+#endif
 
 /*Registration*/
 int sal_register(SalOp *op, const char *proxy, const char *from, int expires, const SalAddress* old_contact);

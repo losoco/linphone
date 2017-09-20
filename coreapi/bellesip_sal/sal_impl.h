@@ -65,11 +65,9 @@ typedef enum SalOpState {
 	,SalOpStateTerminating /*this state is used to wait until a proceeding state, so we can send the cancel*/
 	,SalOpStateTerminated
 }SalOpState;
-#endif
 
 const char* sal_op_state_to_string(SalOpState value);
 
-#if 0
 typedef enum SalOpDir {
 	SalOpDirIncoming=0
 	,SalOpDirOutgoing
@@ -126,10 +124,12 @@ struct SalOp{
 
 belle_sdp_session_description_t * media_description_to_sdp(const SalMediaDescription *sal);
 int sdp_to_media_description(belle_sdp_session_description_t  *sdp, SalMediaDescription *desc);
+#if 0
 belle_sip_request_t* sal_op_build_request(SalOp *op,const char* method);
 
 
 void sal_op_call_fill_cbs(SalOp*op);
+#endif
 void set_or_update_dialog(SalOp* op, belle_sip_dialog_t* dialog);
 
 #if 0
@@ -138,9 +138,9 @@ SalOp* sal_op_ref(SalOp* op);
 /*return null, destroy op if ref count =0*/
 void* sal_op_unref(SalOp* op);
 void sal_op_release_impl(SalOp *op);
-#endif
 
 void sal_op_set_replaces(SalOp* op,belle_sip_header_replaces_t* replaces);
+#endif
 void sal_op_set_remote_ua(SalOp*op,belle_sip_message_t* message);
 #if 0
 int sal_op_send_request(SalOp* op, belle_sip_request_t* request);
@@ -150,7 +150,9 @@ int sal_op_send_request_with_expires(SalOp* op, belle_sip_request_t* request,int
 void sal_op_resend_request(SalOp* op, belle_sip_request_t* request);
 #endif
 int sal_op_send_and_create_refresher(SalOp* op,belle_sip_request_t* req, int expires,belle_sip_refresher_listener_t listener );
+#if 0
 belle_sip_response_t *sal_op_create_response_from_request(SalOp *op, belle_sip_request_t *req, int code);
+#endif
 
 /*
  * return true if both from and to uri are sips
@@ -162,8 +164,10 @@ belle_sip_header_contact_t* sal_op_create_contact(SalOp *op) ;
 
 bool_t _sal_compute_sal_errors(belle_sip_response_t* response, SalReason* sal_reason, char* reason, size_t reason_size);
 SalReason _sal_reason_from_sip_code(int code);
+#if 0
 void sal_op_set_reason_error_info(SalOp *op, belle_sip_message_t *msg);
 void sal_op_set_error_info_from_response(SalOp *op, belle_sip_response_t *response);
+#endif
 /*presence*/
 void sal_op_presence_fill_cbs(SalOp*op);
 /*messaging*/

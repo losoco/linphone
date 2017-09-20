@@ -134,7 +134,7 @@ belle_sip_header_contact_t* sal_op_create_contact(SalOp *op){
 }
 
 
-
+#if 0
 static void add_initial_route_set(belle_sip_request_t *request, const MSList *list){
 	const MSList *elem;
 	for (elem=list;elem!=NULL;elem=elem->next){
@@ -243,6 +243,7 @@ belle_sip_request_t* sal_op_build_request(SalOp *op,const char* method) {
 belle_sip_response_t *sal_op_create_response_from_request(SalOp *op, belle_sip_request_t *req, int code){
 	return sal_create_response_from_request(op->base.root,req,code);
 }
+#endif
 
 /*ping: main purpose is to obtain its own contact address behind firewalls*/
 int sal_ping(SalOp *op, const char *from, const char *to){
@@ -251,6 +252,7 @@ int sal_ping(SalOp *op, const char *from, const char *to){
 	return sal_op_send_request(op,sal_op_build_request(op,"OPTIONS"));
 }
 
+#if 0
 void sal_op_set_replaces(SalOp* op,belle_sip_header_replaces_t* replaces) {
 	if (op->replaces){
 		belle_sip_object_unref(op->replaces);
@@ -258,6 +260,7 @@ void sal_op_set_replaces(SalOp* op,belle_sip_header_replaces_t* replaces) {
 	op->replaces=replaces;
 	belle_sip_object_ref(op->replaces);
 }
+#endif
 
 void sal_op_set_remote_ua(SalOp*op,belle_sip_message_t* message) {
 	belle_sip_header_user_agent_t* user_agent=belle_sip_message_get_header_by_type(message,belle_sip_header_user_agent_t);
@@ -620,6 +623,7 @@ void sal_error_info_set(SalErrorInfo *ei, SalReason reason, const char *protocol
 	}
 }
 
+#if 0
 void sal_op_set_reason_error_info(SalOp *op, belle_sip_message_t *msg){
 	belle_sip_header_reason_t* reason_header = belle_sip_message_get_header_by_type(msg,belle_sip_header_reason_t);
 	if (reason_header){
@@ -642,6 +646,7 @@ void sal_op_set_error_info_from_response(SalOp *op, belle_sip_response_t *respon
 	sal_error_info_set(ei,SalReasonUnknown,"SIP", code,reason_phrase,warnings);
 	sal_op_set_reason_error_info(op, BELLE_SIP_MESSAGE(response));
 }
+#endif
 
 const SalErrorInfo *sal_op_get_error_info(const SalOp *op){
 	return &op->error_info;
@@ -728,6 +733,7 @@ int sal_op_send_and_create_refresher(SalOp* op,belle_sip_request_t* req, int exp
 	return -1;
 }
 
+#if 0
 const char* sal_op_state_to_string(const SalOpState value) {
 	switch(value) {
 	case SalOpStateEarly: return"SalOpStateEarly";
@@ -738,6 +744,7 @@ const char* sal_op_state_to_string(const SalOpState value) {
 		return "Unknown";
 	}
 }
+#endif
 
 /*
  * Warning: this function takes owneship of the custom headers
@@ -853,12 +860,12 @@ void sal_op_stop_refreshing(SalOp *op){
 		belle_sip_refresher_stop(op->refresher);
 	}
 }
-#endif
 
 void sal_call_set_sdp_handling(SalOp *h, SalOpSDPHandling handling)  {
 	if (handling != SalOpSDPNormal) ms_message("Enabling special SDP handling for SalOp[%p]!", h);
 	h->sdp_handling = handling;
 }
+#endif
 void sal_op_cnx_ip_to_0000_if_sendonly_enable(SalOp *op,bool_t yesno) {
 	op->cnx_ip_to_0000_if_sendonly_enabled = yesno;
 }

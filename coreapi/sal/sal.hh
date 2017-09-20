@@ -10,8 +10,8 @@ public:
 	int set_listen_port(const char *addr, int port, SalTransport tr, int is_tunneled);
 	int get_listening_port(SalTransport tr);
 	int sal_unlisten_ports();
-	LINPHONE_PUBLIC int transport_available(SalTransport t);
-	LINPHONE_PUBLIC bool_t content_encoding_available(const char *content_encoding) {return (bool_t)belle_sip_stack_content_encoding_available(this->stack, content_encoding);}
+	int transport_available(SalTransport t);
+	bool_t content_encoding_available(const char *content_encoding) {return (bool_t)belle_sip_stack_content_encoding_available(this->stack, content_encoding);}
 	void set_dscp(int dscp) {belle_sip_stack_set_default_dscp(this->stack,dscp);}
 	void set_supported_tags(const char* tags);
 	void add_supported_tag(const char* tag);
@@ -25,10 +25,10 @@ public:
 	void set_keepalive_period(unsigned int value);
 	void use_tcp_tls_keepalive(bool_t enabled) {this->use_tcp_tls_keep_alive=enabled;}
 	int set_tunnel(void *tunnelclient);
-	void enable_sip_update_method(bool_t value) {ctx->enable_sip_update=value;}
+	void enable_sip_update_method(bool_t value) {this->enable_sip_update=value;}
 	bool_t is_content_type_supported(const char *content_type) const;
 	void add_content_type_support(const char *content_type);
-	unsigned int get_keepalive_period() const {return ctx->keep_alive;}
+	unsigned int get_keepalive_period() const {return this->keep_alive;}
 	void use_session_timers(int expires) {this->session_expires=expires;}
 	void use_dates(bool_t enabled) {this->use_dates=enabled;}
 	void use_one_matching_codec_policy(bool_t one_matching_codec) {this->one_matching_codec=one_matching_codec;}
@@ -40,13 +40,14 @@ public:
 	void verify_server_certificates(bool_t verify);
 	void verify_server_cn(bool_t verify);
 	void set_ssl_config(void *ssl_config);
-	LINPHONE_PUBLIC void set_uuid(const char *uuid);
-	LINPHONE_PUBLIC int create_uuid(char *uuid, size_t len);
+	void set_uuid(const char *uuid);
+	int create_uuid(char *uuid, size_t len);
 	static int generate_uuid(char *uuid, size_t len);
 	void enable_test_features(bool_t enabled) {this->enable_test_features=enabled;}
 	void use_no_initial_routeb(bool_t enabled) {ctx->no_initial_route=enabled;}
 	int sal_iterate() {belle_sip_stack_sleep(this->stack,0); return 0;}
 	bctbx_list_t *get_pending_auths() const {return bctbx_list_copy(sal->pending_auths);}
+	void set_default_sdp_handling(SalOpSDPHandling sdp_handling_method);
 	
 private:
 	struct sal_uuid_t {
@@ -99,6 +100,7 @@ private:
 	bctbx_list_t *supported_content_types = NULL; /* list of char* */
 	
 	friend class SalOp;
+	friend class SalCall;
 };
 
 struct SalOp {
@@ -159,13 +161,15 @@ public:
 	
 	int register_refresh(int expires);
 	
-private:
+protected:
 	enum class State {
 		Early = 0,
 		Active,
 		Terminating, /*this state is used to wait until a proceeding state, so we can send the cancel*/
 		Terminated
 	};
+	
+	static const char* to_string(const State value);
 
 	enum class Dir {
 		Incoming = 0,
@@ -185,12 +189,22 @@ private:
 	void release_impl();
 	void process_authentication();
 	
+	belle_sip_request_t* build_request(const char* method);
 	int send_request(belle_sip_request_t* request);
 	int send_request_with_contact(belle_sip_request_t* request, bool_t add_contact);
 	void resend_request(belle_sip_request_t* request);
 	
+	void set_reason_error_info(belle_sip_message_t *msg);
+	void set_error_info_from_response(belle_sip_response_t *response);
+	
+	void set_referred_by(belle_sip_header_referred_by_t* referred_by);
+	void set_replaces(belle_sip_header_replaces_t* replaces);
+	
+	belle_sip_response_t *create_response_from_request(belle_sip_request_t *req, int code) {return this->root->create_response_from_request(req,code);}
+	
 	static void assign_address(SalAddress** address, const char *value);
 	static void assign_string(char **str, const char *arg);
+	static void add_initial_route_set(belle_sip_request_t *request, const MSList *list);
 	
 	// SalOpBase
 	Sal *root = NULL;

@@ -1336,12 +1336,12 @@ void sal_end_background_task(unsigned long id){
 void sal_enable_sip_update_method(Sal *ctx,bool_t value) {
 	ctx->enable_sip_update=value;
 }
-#endif
 
 void sal_default_set_sdp_handling(Sal *sal, SalOpSDPHandling sdp_handling_method)  {
 	if (sdp_handling_method != SalOpSDPNormal ) ms_message("Enabling special SDP handling for all new SalOp in Sal[%p]!", sal);
 	sal->default_sdp_handling = sdp_handling_method;
 }
+#endif
 
 bool_t sal_pending_trans_checking_enabled(const Sal *sal) {
 	return sal->pending_trans_checking;

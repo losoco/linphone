@@ -389,6 +389,11 @@ void Sal::remove_pending_auth(SalOp *op){
 	}
 }
 
+void Sal::set_default_sdp_handling(SalOpSDPHandling sdp_handling_method)  {
+	if (sdp_handling_method != SalOpSDPNormal ) ms_message("Enabling special SDP handling for all new SalOp in Sal[%p]!", this);
+	this->default_sdp_handling = sdp_handling_method;
+}
+
 
 /************************/
 /* SalOp implementation */
@@ -907,4 +912,161 @@ void SalOp::sal_op_set_event(const char *eventname) {
 		belle_sip_object_ref(header);
 	}
 	this->event = header;
+}
+
+void SalOp::add_initial_route_set(belle_sip_request_t *request, const MSList *list) {
+	const MSList *elem;
+	for (elem=list;elem!=NULL;elem=elem->next){
+		SalAddress *addr=(SalAddress*)elem->data;
+		belle_sip_header_route_t *route;
+		belle_sip_uri_t *uri;
+		/*Optimization: if the initial route set only contains one URI which is the same as the request URI, ommit it*/
+		if (elem==list && list->next==NULL){
+			belle_sip_uri_t *requri=belle_sip_request_get_uri(request);
+			/*skip the first route it is the same as the request uri*/
+			if (strcmp(sal_address_get_domain(addr),belle_sip_uri_get_host(requri))==0 ){
+				ms_message("Skipping top route of initial route-set because same as request-uri.");
+				continue;
+			}
+		}
+
+		route=belle_sip_header_route_create((belle_sip_header_address_t*)addr);
+		uri=belle_sip_header_address_get_uri((belle_sip_header_address_t*)route);
+		belle_sip_uri_set_lr_param(uri,1);
+		belle_sip_message_add_header((belle_sip_message_t*)request,(belle_sip_header_t*)route);
+	}
+}
+
+belle_sip_request_t* SalOp::build_request(const char* method) {
+	belle_sip_header_from_t* from_header;
+	belle_sip_header_to_t* to_header;
+	belle_sip_provider_t* prov=this->root->prov;
+	belle_sip_request_t *req;
+	belle_sip_uri_t* req_uri;
+	belle_sip_uri_t* to_uri;
+	belle_sip_header_call_id_t *call_id_header;
+
+	const SalAddress* to_address;
+	const MSList *elem=get_route_addresses();
+	char token[10];
+
+	/* check that the op has a correct to address */
+	to_address = get_to_address();
+	if( to_address == NULL ){
+		ms_error("No To: address, cannot build request");
+		return NULL;
+	}
+
+	to_uri = belle_sip_header_address_get_uri(BELLE_SIP_HEADER_ADDRESS(to_address));
+	if( to_uri == NULL ){
+		ms_error("To: address is invalid, cannot build request");
+		return NULL;
+	}
+
+	if (strcmp("REGISTER",method)==0 || this->privacy==SalPrivacyNone) {
+		from_header = belle_sip_header_from_create(BELLE_SIP_HEADER_ADDRESS(get_from_address())
+						,belle_sip_random_token(token,sizeof(token)));
+	} else {
+		from_header=belle_sip_header_from_create2("Anonymous <sip:anonymous@anonymous.invalid>",belle_sip_random_token(token,sizeof(token)));
+	}
+	/*make sure to preserve components like headers or port*/
+
+	req_uri = (belle_sip_uri_t*)belle_sip_object_clone((belle_sip_object_t*)to_uri);
+	belle_sip_uri_set_secure(req_uri,sal_op_is_secure(this));
+
+	to_header = belle_sip_header_to_create(BELLE_SIP_HEADER_ADDRESS(to_address),NULL);
+	call_id_header = belle_sip_provider_create_call_id(prov);
+	if (get_call_id()) {
+		belle_sip_header_call_id_set_call_id(call_id_header, get_call_id());
+	}
+
+	req=belle_sip_request_create(
+					req_uri,
+					method,
+					call_id_header,
+					belle_sip_header_cseq_create(20,method),
+					from_header,
+					to_header,
+					belle_sip_header_via_new(),
+					70);
+
+	if (this->privacy & SalPrivacyId) {
+		belle_sip_header_p_preferred_identity_t* p_preferred_identity=belle_sip_header_p_preferred_identity_create(BELLE_SIP_HEADER_ADDRESS(get_from_address()));
+		belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(p_preferred_identity));
+	}
+
+	if (elem && strcmp(method,"REGISTER")!=0 && !this->root->no_initial_route){
+		add_initial_route_set(req,elem);
+	}
+
+	if (strcmp("REGISTER",method)!=0 && this->privacy!=SalPrivacyNone ){
+		belle_sip_header_privacy_t* privacy_header=belle_sip_header_privacy_new();
+		if (this->privacy&SalPrivacyCritical)
+			belle_sip_header_privacy_add_privacy(privacy_header,sal_privacy_to_string(SalPrivacyCritical));
+		if (this->privacy&SalPrivacyHeader)
+			belle_sip_header_privacy_add_privacy(privacy_header,sal_privacy_to_string(SalPrivacyHeader));
+		if (this->privacy&SalPrivacyId)
+			belle_sip_header_privacy_add_privacy(privacy_header,sal_privacy_to_string(SalPrivacyId));
+		if (this->privacy&SalPrivacyNone)
+			belle_sip_header_privacy_add_privacy(privacy_header,sal_privacy_to_string(SalPrivacyNone));
+		if (this->privacy&SalPrivacySession)
+			belle_sip_header_privacy_add_privacy(privacy_header,sal_privacy_to_string(SalPrivacySession));
+		if (this->privacy&SalPrivacyUser)
+			belle_sip_header_privacy_add_privacy(privacy_header,sal_privacy_to_string(SalPrivacyUser));
+		belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(privacy_header));
+	}
+	belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),this->root->supported);
+	return req;
+}
+
+void SalOp::set_error_info_from_response(belle_sip_response_t *response) {
+	int code = belle_sip_response_get_status_code(response);
+	const char *reason_phrase=belle_sip_response_get_reason_phrase(response);
+	belle_sip_header_t *warning=belle_sip_message_get_header(BELLE_SIP_MESSAGE(response),"Warning");
+	SalErrorInfo *ei=&this->error_info;
+	const char *warnings;
+
+	warnings=warning ? belle_sip_header_get_unparsed_value(warning) : NULL;
+	sal_error_info_set(ei,SalReasonUnknown,"SIP", code,reason_phrase,warnings);
+	set_reason_error_info(BELLE_SIP_MESSAGE(response));
+}
+
+const char* SalOp::to_string(const State value) {
+	switch(value) {
+		case State::Early: return"SalOpStateEarly";
+		case State::Active: return "SalOpStateActive";
+		case State::Terminating: return "SalOpStateTerminating";
+		case State::Terminated: return "SalOpStateTerminated";
+	default:
+		return "Unknown";
+	}
+}
+
+void SalOp::set_reason_error_info(belle_sip_message_t *msg) {
+	belle_sip_header_reason_t* reason_header = belle_sip_message_get_header_by_type(msg,belle_sip_header_reason_t);
+	if (reason_header){
+		SalErrorInfo *ei=&this->reason_error_info; // ?//
+		const char *protocol = belle_sip_header_reason_get_protocol(reason_header);
+		int code = belle_sip_header_reason_get_cause(reason_header);
+		const char *text = belle_sip_header_reason_get_text(reason_header);
+		sal_error_info_set(ei, SalReasonUnknown, protocol, code, text, NULL);
+	}
+}
+
+void SalOp::set_referred_by(belle_sip_header_referred_by_t* referred_by) {
+	if (this->referred_by){
+		belle_sip_object_unref(this->referred_by);
+	}
+	
+	this->referred_by=referred_by;
+	belle_sip_object_ref(this->referred_by);
+}
+
+void SalOp::set_replaces(belle_sip_header_replaces_t* replaces) {
+	if (this->replaces){
+		belle_sip_object_unref(this->replaces);
+	}
+	
+	this->replaces=replaces;
+	belle_sip_object_ref(this->replaces);
 }

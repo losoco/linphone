@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 /*call transfer*/
+#if 0
 static void sal_op_set_referred_by(SalOp* op,belle_sip_header_referred_by_t* referred_by) {
 	if (op->referred_by){
 		belle_sip_object_unref(op->referred_by);
@@ -105,12 +106,14 @@ int sal_call_refer_with_replaces(SalOp *op, SalOp *other_call_op){
 	belle_sip_parameters_clean(BELLE_SIP_PARAMETERS(referred_by));
 	return sal_call_refer_to(op,refer_to,referred_by);
 }
+#endif
 /*
 int sal_call_accept_refer(SalOp *h){
 	ms_fatal("sal_call_accept_refer not implemented yet");
 	return -1;
 }*/
 /*informs this call is consecutive to an incoming refer */
+#if 0
 int sal_call_set_referer(SalOp *h, SalOp *refered_call){
 	if (refered_call->replaces)
 		sal_op_set_replaces(h,refered_call->replaces);
@@ -199,6 +202,7 @@ int sal_call_notify_refer_state(SalOp *op, SalOp *newcall){
 	}
 	return 0;
 }
+#endif
 
 
 void sal_op_process_refer(SalOp *op, const belle_sip_request_event_t *event, belle_sip_server_transaction_t *server_transaction){
