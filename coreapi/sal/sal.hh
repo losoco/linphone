@@ -168,6 +168,9 @@ public:
 	
 	int register_refresh(int expires);
 	
+	int ping(const char *from, const char *to);
+	int send_info(const char *from, const char *to, const SalBodyHandler *body_handler);
+	
 protected:
 	enum class State {
 		Early = 0,

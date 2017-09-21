@@ -18,7 +18,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "sal_impl.h"
 
-
+#if 0
 int sal_send_info(SalOp *op, const char *from, const char *to, const SalBodyHandler *body_handler){
 	if (op->dialog && belle_sip_dialog_get_state(op->dialog) == BELLE_SIP_DIALOG_CONFIRMED){
 		belle_sip_request_t *req;
@@ -31,4 +31,5 @@ int sal_send_info(SalOp *op, const char *from, const char *to, const SalBodyHand
 	}
 	return -1;
 }
+#endif
 

@@ -1168,6 +1168,25 @@ void SalOp::set_or_update_dialog(belle_sip_dialog_t* dialog) {
 	unref();
 }
 
+int SalOp::ping(const char *from, const char *to) {
+	set_from(from);
+	set_to(to);
+	return send_request(build_request("OPTIONS"));
+}
+
+int SalOp::send_info(const char *from, const char *to, const SalBodyHandler *body_handler) {
+	if (this->dialog && belle_sip_dialog_get_state(this->dialog) == BELLE_SIP_DIALOG_CONFIRMED) {
+		belle_sip_request_t *req;
+		belle_sip_dialog_enable_pending_trans_checking(this->dialog,this->root->pending_trans_checking);
+		req=belle_sip_dialog_create_queued_request(this->dialog,"INFO");
+		belle_sip_message_set_body_handler(BELLE_SIP_MESSAGE(req), BELLE_SIP_BODY_HANDLER(body_handler));
+		return send_request(req);
+	}else{
+		ms_error("Cannot send INFO message on op [%p] because dialog is not in confirmed state yet.", this);
+	}
+	return -1;
+}
+
 int to_sip_code(SalReason r) {
 	int ret=500;
 	switch(r){

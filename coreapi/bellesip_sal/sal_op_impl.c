@@ -241,7 +241,6 @@ belle_sip_request_t* sal_op_build_request(SalOp *op,const char* method) {
 belle_sip_response_t *sal_op_create_response_from_request(SalOp *op, belle_sip_request_t *req, int code){
 	return sal_create_response_from_request(op->base.root,req,code);
 }
-#endif
 
 /*ping: main purpose is to obtain its own contact address behind firewalls*/
 int sal_ping(SalOp *op, const char *from, const char *to){
@@ -250,7 +249,6 @@ int sal_ping(SalOp *op, const char *from, const char *to){
 	return sal_op_send_request(op,sal_op_build_request(op,"OPTIONS"));
 }
 
-#if 0
 void sal_op_set_replaces(SalOp* op,belle_sip_header_replaces_t* replaces) {
 	if (op->replaces){
 		belle_sip_object_unref(op->replaces);

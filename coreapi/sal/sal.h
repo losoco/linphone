@@ -872,11 +872,13 @@ int sal_notify_presence_close(SalOp *op);
 SalBodyHandler *sal_presence_model_create_body_handler(SalPresenceModel *presence);
 
 
+#if 0
 /*ping: main purpose is to obtain its own contact address behind firewalls*/
 int sal_ping(SalOp *op, const char *from, const char *to);
 
 /*info messages*/
 int sal_send_info(SalOp *op, const char *from, const char *to, const SalBodyHandler *body);
+#endif
 
 /*generic subscribe/notify/publish api*/
 int sal_subscribe(SalOp *op, const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body);
