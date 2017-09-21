@@ -1070,3 +1070,179 @@ void SalOp::set_replaces(belle_sip_header_replaces_t* replaces) {
 	this->replaces=replaces;
 	belle_sip_object_ref(this->replaces);
 }
+
+int SalOp::send_request_with_expires(belle_sip_request_t* request,int expires) {
+	belle_sip_header_expires_t* expires_header=(belle_sip_header_expires_t*)belle_sip_message_get_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_EXPIRES);
+
+	if (!expires_header && expires>=0) {
+		belle_sip_message_add_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_HEADER(expires_header=belle_sip_header_expires_new()));
+	}
+	if (expires_header) belle_sip_header_expires_set_expires(expires_header,expires);
+	return send_request(request);
+}
+
+int SalOp::send_and_create_refresher(belle_sip_request_t* req, int expires,belle_sip_refresher_listener_t listener) {
+	if (send_request_with_expires(req,expires)==0) {
+		if (this->refresher) {
+			belle_sip_refresher_stop(this->refresher);
+			belle_sip_object_unref(this->refresher);
+		}
+		if ((this->refresher = belle_sip_client_transaction_create_refresher(this->pending_client_trans))) {
+			/*since refresher acquires the transaction, we should remove our context from the transaction, because we won't be notified
+			 * that it is terminated anymore.*/
+			unref();/*loose the reference that was given to the transaction when creating it*/
+			/* Note that the refresher will replace our data with belle_sip_transaction_set_application_data().
+			 Something in the design is not very good here, it makes things complicated to the belle-sip user.
+			 Possible ideas to improve things: refresher shall not use belle_sip_transaction_set_application_data() internally, refresher should let the first transaction
+			 notify the user as a normal transaction*/
+			belle_sip_refresher_set_listener(this->refresher,listener, this);
+			belle_sip_refresher_set_retry_after(this->refresher,this->root->refresher_retry_after);
+			belle_sip_refresher_set_realm(this->refresher,this->realm);
+			belle_sip_refresher_enable_manual_mode(this->refresher, this->manual_refresher);
+			return 0;
+		} else {
+			return -1;
+		}
+	}
+	return -1;
+}
+
+belle_sip_header_contact_t *SalOp::create_contact() {
+	belle_sip_header_contact_t* contact_header;
+	belle_sip_uri_t* contact_uri;
+
+	if (get_contact_address()) {
+		contact_header = belle_sip_header_contact_create(BELLE_SIP_HEADER_ADDRESS(get_contact_address()));
+	} else {
+		contact_header= belle_sip_header_contact_new();
+	}
+
+	if (!(contact_uri=belle_sip_header_address_get_uri(BELLE_SIP_HEADER_ADDRESS(contact_header)))) {
+		/*no uri, just creating a new one*/
+		contact_uri=belle_sip_uri_new();
+		belle_sip_header_address_set_uri(BELLE_SIP_HEADER_ADDRESS(contact_header),contact_uri);
+	}
+
+	belle_sip_uri_set_user_password(contact_uri,NULL);
+	belle_sip_uri_set_secure(contact_uri,sal_op_is_secure(this));
+	if (this->privacy!=SalPrivacyNone){
+		belle_sip_uri_set_user(contact_uri,NULL);
+	}
+	belle_sip_header_contact_set_automatic(contact_header,this->root->auto_contacts);
+	if (this->root->uuid){
+		if (belle_sip_parameters_has_parameter(BELLE_SIP_PARAMETERS(contact_header),"+sip.instance")==0){
+			char *instance_id=belle_sip_strdup_printf("\"<urn:uuid:%s>\"",this->root->uuid);
+			belle_sip_parameters_set_parameter(BELLE_SIP_PARAMETERS(contact_header),"+sip.instance",instance_id);
+			belle_sip_free(instance_id);
+		}
+	}
+	return contact_header;
+}
+
+void SalOp::unlink_op_with_dialog(belle_sip_dialog_t* dialog) {
+	belle_sip_dialog_set_application_data(dialog,NULL);
+	unref();
+	belle_sip_object_unref(dialog);
+}
+
+belle_sip_dialog_t *SalOp::link_op_with_dialog(belle_sip_dialog_t* dialog) {
+	belle_sip_dialog_set_application_data(dialog,ref());
+	belle_sip_object_ref(dialog);
+	return dialog;
+}
+
+void SalOp::set_or_update_dialog(belle_sip_dialog_t* dialog) {
+	ms_message("op [%p] : set_or_update_dialog() current=[%p] new=[%p]", this, this->dialog,dialog);
+	ref();
+	if (this->dialog!=dialog){
+		if (this->dialog){
+			/*FIXME: shouldn't we delete unconfirmed dialogs ?*/
+			unlink_op_with_dialog(this->dialog);
+			this->dialog=NULL;
+		}
+		if (dialog) {
+			this->dialog=link_op_with_dialog(dialog);
+			belle_sip_dialog_enable_pending_trans_checking(dialog,this->root->pending_trans_checking);
+		}
+	}
+	unref();
+}
+
+int to_sip_code(SalReason r) {
+	int ret=500;
+	switch(r){
+		case SalReasonNone:
+			ret=200;
+			break;
+		case SalReasonIOError:
+			ret=503;
+			break;
+		case SalReasonUnknown:
+			ret=400;
+			break;
+		case SalReasonBusy:
+			ret=486;
+			break;
+		case SalReasonDeclined:
+			ret=603;
+			break;
+		case SalReasonDoNotDisturb:
+			ret=600;
+			break;
+		case SalReasonForbidden:
+			ret=403;
+			break;
+		case SalReasonUnsupportedContent:
+			ret=415;
+			break;
+		case SalReasonNotFound:
+			ret=404;
+			break;
+		case SalReasonRedirect:
+			ret=302;
+			break;
+		case SalReasonTemporarilyUnavailable:
+			ret=480;
+			break;
+		case SalReasonServiceUnavailable:
+			ret=503;
+			break;
+		case SalReasonRequestPending:
+			ret=491;
+			break;
+		case SalReasonUnauthorized:
+			ret=401;
+			break;
+		case SalReasonNotAcceptable:
+			ret=488; /*or maybe 606 Not Acceptable ?*/
+			break;
+		case SalReasonNoMatch:
+			ret=481;
+			break;
+		case SalReasonRequestTimeout:
+			ret=408;
+			break;
+		case SalReasonMovedPermanently:
+			ret=301;
+			break;
+		case SalReasonGone:
+			ret=410;
+			break;
+		case SalReasonAddressIncomplete:
+			ret=484;
+			break;
+		case SalReasonNotImplemented:
+			ret=501;
+			break;
+		case SalReasonServerTimeout:
+			ret=504;
+			break;
+		case SalReasonBadGateway:
+			ret=502;
+			break;
+		case SalReasonInternalError:
+			ret=500;
+			break;
+	}
+	return ret;
+}

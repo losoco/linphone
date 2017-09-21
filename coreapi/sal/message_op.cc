@@ -1,54 +1,27 @@
-/*
-linphone
-Copyright (C) 2012  Belledonne Communications, Grenoble, France
+#include "message_op.hh"
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+using namespace std;
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
-#include "sal_impl.h"
-
-#include "linphone/core.h"
-#include "private.h"
-#include <libxml/xmlwriter.h>
-
-#if 0
-static void process_error( SalOp* op) {
-	if (op->dir == SalOpDirOutgoing) {
-		op->base.root->callbacks.message_delivery_update(op, SalMessageDeliveryFailed);
+void MessageOp::process_error() {
+	if (this->dir == Dir::Outgoing) {
+		this->root->callbacks.message_delivery_update(this, SalMessageDeliveryFailed);
 	} else {
-		ms_warning("unexpected io error for incoming message on op [%p]",op);
+		ms_warning("unexpected io error for incoming message on op [%p]", this);
 	}
-	op->state=SalOpStateTerminated;
-
+	this->state=State::Terminated;
 }
 
-static void process_io_error(void *user_ctx, const belle_sip_io_error_event_t *event){
-	SalOp* op = (SalOp*)user_ctx;
+void MessageOp::process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event) {
+	MessageOp* op = (MessageOp*)user_ctx;
 	sal_error_info_set(&op->error_info,SalReasonIOError, "SIP", 503,"IO Error",NULL);
-	process_error(op);
+	op->process_error();
 }
-static void process_timeout(void *user_ctx, const belle_sip_timeout_event_t *event) {
-	SalOp* op=(SalOp*)user_ctx;
-	sal_error_info_set(&op->error_info,SalReasonRequestTimeout, "SIP", 408,"Request timeout",NULL);
-	process_error(op);
 
-}
-static void process_response_event(void *op_base, const belle_sip_response_event_t *event){
-	SalOp* op = (SalOp*)op_base;
+void MessageOp::process_response_event_cb(void *op_base, const belle_sip_response_event_t *event) {
+	MessageOp* op = (MessageOp*)op_base;
 	int code = belle_sip_response_get_status_code(belle_sip_response_event_get_response(event));
 	SalMessageDeliveryStatus status;
-	sal_op_set_error_info_from_response(op,belle_sip_response_event_get_response(event));
+	op->set_error_info_from_response(belle_sip_response_event_get_response(event));
 	
 	if (code>=100 && code <200)
 		status=SalMessageDeliveryInProgress;
@@ -57,21 +30,27 @@ static void process_response_event(void *op_base, const belle_sip_response_event
 	else
 		status=SalMessageDeliveryFailed;
 	
-	op->base.root->callbacks.message_delivery_update(op,status);
+	op->root->callbacks.message_delivery_update(op,status);
 }
 
-static bool_t is_external_body(belle_sip_header_content_type_t* content_type) {
+void MessageOp::process_timeout_cb(void *user_ctx, const belle_sip_timeout_event_t *event) {
+	MessageOp* op=(MessageOp*)user_ctx;
+	sal_error_info_set(&op->error_info,SalReasonRequestTimeout, "SIP", 408,"Request timeout",NULL);
+	op->process_error();
+}
+
+bool_t MessageOp::is_external_body(belle_sip_header_content_type_t* content_type) {
 	return strcmp("message",belle_sip_header_content_type_get_type(content_type))==0
 			&&	strcmp("external-body",belle_sip_header_content_type_get_subtype(content_type))==0;
 }
 
-static void add_message_accept(SalOp *op, belle_sip_message_t *msg) {
+void MessageOp::add_message_accept(belle_sip_message_t *msg) {
 	bctbx_list_t *item;
 	const char *str;
 	char *old;
 	char *header = ms_strdup("xml/cipher, application/cipher.vnd.gsma.rcs-ft-http+xml");
 
-	for (item = op->base.root->supported_content_types; item != NULL; item = bctbx_list_next(item)) {
+	for (item = this->root->supported_content_types; item != NULL; item = bctbx_list_next(item)) {
 		str = (const char *)bctbx_list_get_data(item);
 		old = header;
 		header = ms_strdup_printf("%s, %s", old, str);
@@ -82,9 +61,9 @@ static void add_message_accept(SalOp *op, belle_sip_message_t *msg) {
 	ms_free(header);
 }
 
-void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *event){
+void MessageOp::process_incoming_message(const belle_sip_request_event_t *event) {
 	belle_sip_request_t* req = belle_sip_request_event_get_request(event);
-	belle_sip_server_transaction_t* server_transaction = belle_sip_provider_create_server_transaction(op->base.root->prov,req);
+	belle_sip_server_transaction_t* server_transaction = belle_sip_provider_create_server_transaction(this->root->prov,req);
 	belle_sip_header_address_t* address;
 	belle_sip_header_from_t* from_header;
 	belle_sip_header_content_type_t* content_type;
@@ -103,9 +82,10 @@ void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *eve
 		SalMessage salmsg;
 		char message_id[256]={0};
 
-		if (op->pending_server_trans) belle_sip_object_unref(op->pending_server_trans);
-		op->pending_server_trans=server_transaction;
-		belle_sip_object_ref(op->pending_server_trans);
+		if (this->pending_server_trans) belle_sip_object_unref(this->pending_server_trans);
+		
+		this->pending_server_trans=server_transaction;
+		belle_sip_object_ref(this->pending_server_trans);
 
 		external_body=is_external_body(content_type);
 		address=belle_sip_header_address_create(belle_sip_header_address_get_displayname(BELLE_SIP_HEADER_ADDRESS(from_header))
@@ -126,7 +106,7 @@ void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *eve
 		}
 		salmsg.message_id=message_id;
 		salmsg.time=date ? belle_sip_header_date_get_time(date) : time(NULL);
-		op->base.root->callbacks.message_received(op,&salmsg);
+		this->root->callbacks.message_received(this,&salmsg);
 
 		belle_sip_object_unref(address);
 		belle_sip_free(from);
@@ -135,18 +115,30 @@ void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *eve
 	} else {
 		ms_error("Unsupported MESSAGE (no Content-Type)");
 		resp = belle_sip_response_create_from_request(req, errcode);
-		add_message_accept(op, (belle_sip_message_t*)resp);
+		add_message_accept((belle_sip_message_t*)resp);
 		belle_sip_server_transaction_send_response(server_transaction,resp);
-		sal_op_release(op);
+		release();
 	}
 }
 
-static void process_request_event(void *op_base, const belle_sip_request_event_t *event) {
-	SalOp* op = (SalOp*)op_base;
-	sal_process_incoming_message(op,event);
+void MessageOp::process_request_event_cb(void *op_base, const belle_sip_request_event_t *event) {
+	MessageOp* op = (MessageOp*)op_base;
+	op->process_incoming_message(event);
 }
 
-int sal_message_send(SalOp *op, const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri){
+void MessageOp::fill_cbs() {
+	static belle_sip_listener_callbacks_t op_message_callbacks = {0};
+	if (op_message_callbacks.process_io_error==NULL) {
+		op_message_callbacks.process_io_error=process_io_error_cb;
+		op_message_callbacks.process_response_event=process_response_event_cb;
+		op_message_callbacks.process_timeout=process_timeout_cb;
+		op_message_callbacks.process_request_event=process_request_event_cb;
+	}
+	this->callbacks=&op_message_callbacks;
+	this->type=Type::Message;
+}
+
+int MessageOp::send(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) {
 	belle_sip_request_t* req;
 	char content_type_raw[256];
 	size_t content_length = msg?strlen(msg):0;
@@ -154,23 +146,23 @@ int sal_message_send(SalOp *op, const char *from, const char *to, const char* co
 	const char *body;
 	int retval;
 	
-	if (op->dialog){
+	if (this->dialog){
 		/*for SIP MESSAGE that are sent in call's dialog*/
-		req=belle_sip_dialog_create_queued_request(op->dialog,"MESSAGE");
+		req=belle_sip_dialog_create_queued_request(this->dialog,"MESSAGE");
 	}else{
-		sal_op_message_fill_cbs(op);
+		fill_cbs();
 		if (from)
-			sal_op_set_from(op,from);
+			set_from(from);
 		if (to)
-			sal_op_set_to(op,to);
-		op->dir=SalOpDirOutgoing;
+			set_to(to);
+		this->dir=Dir::Outgoing;
 
-		req=sal_op_build_request(op,"MESSAGE");
+		req=build_request("MESSAGE");
 		if (req == NULL ){
 			return -1;
 		}
-		if (sal_op_get_contact_address(op)){
-			belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(sal_op_create_contact(op)));
+		if (get_contact_address()){
+			belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(create_contact()));
 		}
 	}
 
@@ -183,38 +175,18 @@ int sal_message_send(SalOp *op, const char *from, const char *to, const char* co
 		/*don't call set_body() with null argument because it resets content type and content length*/
 		belle_sip_message_set_body(BELLE_SIP_MESSAGE(req), body, content_length);
 	}
-	retval = sal_op_send_request(op,req);
+	retval = send_request(req);
 
 	return retval;
 }
-#endif
 
-int sal_message_reply(SalOp *op, SalReason reason){
-	if (op->pending_server_trans){
-		int code=sal_reason_to_sip_code(reason);
+int MessageOp::reply(SalReason reason) {
+	if (this->pending_server_trans){
+		int code=to_sip_code(reason);
 		belle_sip_response_t *resp = belle_sip_response_create_from_request(
-			belle_sip_transaction_get_request((belle_sip_transaction_t*)op->pending_server_trans),code);
-		belle_sip_server_transaction_send_response(op->pending_server_trans,resp);
+			belle_sip_transaction_get_request((belle_sip_transaction_t*)this->pending_server_trans),code);
+		belle_sip_server_transaction_send_response(this->pending_server_trans,resp);
 		return 0;
 	}else ms_error("sal_message_reply(): no server transaction");
 	return -1;
 }
-
-#if 0
-int sal_text_send(SalOp *op, const char *from, const char *to, const char *msg) {
-	return sal_message_send(op,from,to,"text/plain",msg, NULL);
-}
-
-static belle_sip_listener_callbacks_t op_message_callbacks={0};
-
-void sal_op_message_fill_cbs(SalOp*op) {
-	if (op_message_callbacks.process_io_error==NULL){
-		op_message_callbacks.process_io_error=process_io_error;
-		op_message_callbacks.process_response_event=process_response_event;
-		op_message_callbacks.process_timeout=process_timeout;
-		op_message_callbacks.process_request_event=process_request_event;
-	}
-	op->callbacks=&op_message_callbacks;
-	op->type=SalOpMessage;
-}
-#endif

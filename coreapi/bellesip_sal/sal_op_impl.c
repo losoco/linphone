@@ -99,7 +99,6 @@ void sal_op_cancel_authentication(SalOp *h){
 SalAuthInfo * sal_op_get_auth_requested(SalOp *op){
 	return op->auth_info;
 }
-#endif
 
 belle_sip_header_contact_t* sal_op_create_contact(SalOp *op){
 	belle_sip_header_contact_t* contact_header;
@@ -134,7 +133,6 @@ belle_sip_header_contact_t* sal_op_create_contact(SalOp *op){
 }
 
 
-#if 0
 static void add_initial_route_set(belle_sip_request_t *request, const MSList *list){
 	const MSList *elem;
 	for (elem=list;elem!=NULL;elem=elem->next){
@@ -273,6 +271,7 @@ void sal_op_set_remote_ua(SalOp*op,belle_sip_message_t* message) {
 	}
 }
 
+#if 0
 int sal_op_send_request_with_expires(SalOp* op, belle_sip_request_t* request,int expires) {
 	belle_sip_header_expires_t* expires_header=(belle_sip_header_expires_t*)belle_sip_message_get_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_EXPIRES);
 
@@ -283,7 +282,6 @@ int sal_op_send_request_with_expires(SalOp* op, belle_sip_request_t* request,int
 	return sal_op_send_request(op,request);
 }
 
-#if 0
 void sal_op_resend_request(SalOp* op, belle_sip_request_t* request) {
 	belle_sip_header_cseq_t* cseq=(belle_sip_header_cseq_t*)belle_sip_message_get_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_CSEQ);
 	belle_sip_header_cseq_set_seq_number(cseq,belle_sip_header_cseq_get_seq_number(cseq)+1);
@@ -427,7 +425,6 @@ int sal_op_send_request(SalOp* op, belle_sip_request_t* request)  {
 
 	return _sal_op_send_request_with_contact(op, request,need_contact);
 }
-#endif
 
 int sal_reason_to_sip_code(SalReason r){
 	int ret=500;
@@ -507,6 +504,7 @@ int sal_reason_to_sip_code(SalReason r){
 	}
 	return ret;
 }
+#endif
 
 SalReason _sal_reason_from_sip_code(int code) {
 	if (code>=100 && code<300) return SalReasonNone;
@@ -658,7 +656,7 @@ const SalErrorInfo * sal_op_get_reason_error_info(const SalOp *op){
 
 
 
-
+#if 0
 static void unlink_op_with_dialog(SalOp *op, belle_sip_dialog_t* dialog){
 	belle_sip_dialog_set_application_data(dialog,NULL);
 	sal_op_unref(op);
@@ -688,7 +686,6 @@ void set_or_update_dialog(SalOp* op, belle_sip_dialog_t* dialog) {
 	sal_op_unref(op);
 }
 
-#if 0
 /*return reffed op*/
 SalOp* sal_op_ref(SalOp* op) {
 	op->ref++;
@@ -705,7 +702,6 @@ void* sal_op_unref(SalOp* op) {
 	}
 	return NULL;
 }
-#endif
 
 int sal_op_send_and_create_refresher(SalOp* op,belle_sip_request_t* req, int expires,belle_sip_refresher_listener_t listener ) {
 	if (sal_op_send_request_with_expires(op,req,expires)==0) {
@@ -733,7 +729,6 @@ int sal_op_send_and_create_refresher(SalOp* op,belle_sip_request_t* req, int exp
 	return -1;
 }
 
-#if 0
 const char* sal_op_state_to_string(const SalOpState value) {
 	switch(value) {
 	case SalOpStateEarly: return"SalOpStateEarly";

@@ -3,7 +3,11 @@
 
 #include "sal/sal.h"
 
-struct Sal{
+// class SalCall;
+// class RegisterOp;
+// class MessageOp;
+
+class Sal{
 public:
 	~Sal();
 	void set_callbacks(const SalCallbacks *cbs);
@@ -30,7 +34,7 @@ public:
 	void add_content_type_support(const char *content_type);
 	unsigned int get_keepalive_period() const {return this->keep_alive;}
 	void use_session_timers(int expires) {this->session_expires=expires;}
-	void use_dates(bool_t enabled) {this->use_dates=enabled;}
+	void use_dates(bool_t enabled) {this->_use_dates=enabled;}
 	void use_one_matching_codec_policy(bool_t one_matching_codec) {this->one_matching_codec=one_matching_codec;}
 	void use_rport(bool_t use_rports);
 	void enable_auto_contacts(bool_t enabled) {this->auto_contacts=enabled;}
@@ -43,10 +47,10 @@ public:
 	void set_uuid(const char *uuid);
 	int create_uuid(char *uuid, size_t len);
 	static int generate_uuid(char *uuid, size_t len);
-	void enable_test_features(bool_t enabled) {this->enable_test_features=enabled;}
-	void use_no_initial_routeb(bool_t enabled) {ctx->no_initial_route=enabled;}
+	void enable_test_features(bool_t enabled) {this->_enable_test_features=enabled;}
+	void use_no_initial_routeb(bool_t enabled) {this->no_initial_route=enabled;}
 	int sal_iterate() {belle_sip_stack_sleep(this->stack,0); return 0;}
-	bctbx_list_t *get_pending_auths() const {return bctbx_list_copy(sal->pending_auths);}
+	bctbx_list_t *get_pending_auths() const {return bctbx_list_copy(this->pending_auths);}
 	void set_default_sdp_handling(SalOpSDPHandling sdp_handling_method);
 	
 private:
@@ -89,9 +93,9 @@ private:
 	bool_t nat_helper_enabled = FALSE;
 	bool_t tls_verify = FALSE;
 	bool_t tls_verify_cn = FALSE;
-	bool_t use_dates = FALSE;
+	bool_t _use_dates = FALSE;
 	bool_t auto_contacts = FALSE;
-	bool_t enable_test_features = FALSE;
+	bool_t _enable_test_features = FALSE;
 	bool_t no_initial_route = FALSE;
 	bool_t enable_sip_update = FALSE; /*true by default*/
 	SalOpSDPHandling default_sdp_handling = SalOpSDPNormal;
@@ -101,9 +105,12 @@ private:
 	
 	friend class SalOp;
 	friend class SalCall;
+	friend class RegisterOp;
+	friend class MessageOp;
+	friend class PresenceOp;
 };
 
-struct SalOp {
+class SalOp {
 public:
 	SalOp(Sal *sal);
 	~SalOp();
@@ -157,7 +164,7 @@ public:
 	
 	void authenticate(const SalAuthInfo *info);
 	void cancel_authentication() {ms_fatal("sal_op_cancel_authentication not implemented yet");}
-	SalAuthInfo *get_auth_requested() {return op->auth_info;}
+	SalAuthInfo *get_auth_requested() {return this->auth_info;}
 	
 	int register_refresh(int expires);
 	
@@ -192,7 +199,9 @@ protected:
 	belle_sip_request_t* build_request(const char* method);
 	int send_request(belle_sip_request_t* request);
 	int send_request_with_contact(belle_sip_request_t* request, bool_t add_contact);
+	int send_request_with_expires(belle_sip_request_t* request,int expires);
 	void resend_request(belle_sip_request_t* request);
+	int send_and_create_refresher(belle_sip_request_t* req, int expires,belle_sip_refresher_listener_t listener);
 	
 	void set_reason_error_info(belle_sip_message_t *msg);
 	void set_error_info_from_response(belle_sip_response_t *response);
@@ -201,6 +210,11 @@ protected:
 	void set_replaces(belle_sip_header_replaces_t* replaces);
 	
 	belle_sip_response_t *create_response_from_request(belle_sip_request_t *req, int code) {return this->root->create_response_from_request(req,code);}
+	belle_sip_header_contact_t *create_contact();
+	
+	void set_or_update_dialog(belle_sip_dialog_t* dialog);
+	belle_sip_dialog_t *link_op_with_dialog(belle_sip_dialog_t* dialog);
+	void unlink_op_with_dialog(belle_sip_dialog_t* dialog);
 	
 	static void assign_address(SalAddress** address, const char *value);
 	static void assign_string(char **str, const char *arg);
@@ -267,6 +281,8 @@ protected:
 	
 	friend class Sal;
 };
+
+int to_sip_code(SalReason r);
 
 
 #endif // _LINPHONE_SAL_HH

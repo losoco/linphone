@@ -55,9 +55,11 @@ struct Sal;
 
 typedef struct Sal Sal;
 
+#if 0
 struct SalOp;
 
-typedef stract SalOp SalOp;
+typedef struct SalOp SalOp;
+#endif
 
 struct SalAddress;
 
@@ -847,7 +849,6 @@ void sal_call_set_replaces(SalOp *op, const char *call_id, const char *from_tag,
 LINPHONE_PUBLIC void sal_default_set_sdp_handling(Sal* h, SalOpSDPHandling handling_method) ;
 /* Second version: for a specific call*/
 LINPHONE_PUBLIC void sal_call_set_sdp_handling(SalOp *h, SalOpSDPHandling handling) ;
-#endif
 
 /*Registration*/
 int sal_register(SalOp *op, const char *proxy, const char *from, int expires, const SalAddress* old_contact);
@@ -864,6 +865,7 @@ int sal_message_reply(SalOp *op, SalReason reason);
 int sal_subscribe_presence(SalOp *op, const char *from, const char *to, int expires);
 int sal_notify_presence(SalOp *op, SalPresenceModel *presence);
 int sal_notify_presence_close(SalOp *op);
+#endif
 
 /*presence publish */
 //int sal_publish_presence(SalOp *op, const char *from, const char *to, int expires, SalPresenceModel *presence);

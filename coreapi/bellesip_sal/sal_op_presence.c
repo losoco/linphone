@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "sal_impl.h"
 
 
+#if 0
 void sal_add_presence_info(SalOp *op, belle_sip_message_t *notify, SalPresenceModel *presence) {
 	char *contact_info;
 	char *content = NULL;
@@ -436,6 +437,6 @@ int sal_notify_presence_close(SalOp *op){
 	set_or_update_dialog(op,NULL);  /*because we may be chalanged for the notify, so we must release dialog right now*/
 	return status;
 }
-
+#endif
 
 

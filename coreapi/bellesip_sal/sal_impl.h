@@ -129,8 +129,8 @@ belle_sip_request_t* sal_op_build_request(SalOp *op,const char* method);
 
 
 void sal_op_call_fill_cbs(SalOp*op);
-#endif
 void set_or_update_dialog(SalOp* op, belle_sip_dialog_t* dialog);
+#endif
 
 #if 0
 /*return reffed op*/
@@ -144,13 +144,9 @@ void sal_op_set_replaces(SalOp* op,belle_sip_header_replaces_t* replaces);
 void sal_op_set_remote_ua(SalOp*op,belle_sip_message_t* message);
 #if 0
 int sal_op_send_request(SalOp* op, belle_sip_request_t* request);
-#endif
 int sal_op_send_request_with_expires(SalOp* op, belle_sip_request_t* request,int expires);
-#if 0
 void sal_op_resend_request(SalOp* op, belle_sip_request_t* request);
-#endif
 int sal_op_send_and_create_refresher(SalOp* op,belle_sip_request_t* req, int expires,belle_sip_refresher_listener_t listener );
-#if 0
 belle_sip_response_t *sal_op_create_response_from_request(SalOp *op, belle_sip_request_t *req, int code);
 #endif
 
@@ -160,19 +156,21 @@ belle_sip_response_t *sal_op_create_response_from_request(SalOp *op, belle_sip_r
 bool_t sal_op_is_secure(const SalOp* op);
 
 void sal_process_authentication(SalOp *op);
+#if 0
 belle_sip_header_contact_t* sal_op_create_contact(SalOp *op) ;
+#endif
 
 bool_t _sal_compute_sal_errors(belle_sip_response_t* response, SalReason* sal_reason, char* reason, size_t reason_size);
 SalReason _sal_reason_from_sip_code(int code);
 #if 0
 void sal_op_set_reason_error_info(SalOp *op, belle_sip_message_t *msg);
 void sal_op_set_error_info_from_response(SalOp *op, belle_sip_response_t *response);
-#endif
 /*presence*/
 void sal_op_presence_fill_cbs(SalOp*op);
 /*messaging*/
 void sal_op_message_fill_cbs(SalOp*op);
 void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *event);
+#endif
 void sal_op_subscribe_fill_cbs(SalOp*op);
 
 /*call transfer*/
@@ -183,8 +181,8 @@ SalAuthInfo* sal_auth_info_create(belle_sip_auth_event_t* event) ;
 #if 0
 void sal_add_pending_auth(Sal *sal, SalOp *op);
 void sal_remove_pending_auth(Sal *sal, SalOp *op);
-#endif
 void sal_add_presence_info(SalOp *op, belle_sip_message_t *notify, SalPresenceModel *presence);
+#endif
 
 belle_sip_response_t *sal_create_response_from_request(Sal *sal, belle_sip_request_t *req, int code);
 
@@ -192,7 +190,9 @@ void sal_op_assign_recv_headers(SalOp *op, belle_sip_message_t *incoming);
 
 SalBodyHandler * sal_op_get_body_handler(SalOp *op, belle_sip_message_t *msg);
 
+#if 0
 int sal_reason_to_sip_code(SalReason r);
+#endif
 
 void _sal_op_add_custom_headers(SalOp *op, belle_sip_message_t *msg);
 
