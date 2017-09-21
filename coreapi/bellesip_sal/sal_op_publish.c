@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "sal_impl.h"
 
 
+#if 0
 static void publish_refresher_listener (belle_sip_refresher_t* refresher
 		,void* user_pointer
 		,unsigned int status_code
@@ -110,3 +111,4 @@ int sal_op_unpublish(SalOp *op){
 	}
 	return -1;
 }
+#endif

@@ -752,6 +752,7 @@ void sal_op_set_sent_custom_header(SalOp *op, SalCustomHeader* ch){
 	b->sent_custom_headers=ch;
 }
 
+#if 0
 void sal_op_assign_recv_headers(SalOp *op, belle_sip_message_t *incoming){
 	if (incoming) belle_sip_object_ref(incoming);
 	if (op->base.recv_custom_headers){
@@ -763,7 +764,6 @@ void sal_op_assign_recv_headers(SalOp *op, belle_sip_message_t *incoming){
 	}
 }
 
-#if 0
 const char *sal_op_get_remote_contact(const SalOp *op){
 	/*
 	 * remote contact is filled in process_response

@@ -186,9 +186,9 @@ void sal_add_presence_info(SalOp *op, belle_sip_message_t *notify, SalPresenceMo
 
 belle_sip_response_t *sal_create_response_from_request(Sal *sal, belle_sip_request_t *req, int code);
 
+#if 0
 void sal_op_assign_recv_headers(SalOp *op, belle_sip_message_t *incoming);
 
-#if 0
 SalBodyHandler * sal_op_get_body_handler(SalOp *op, belle_sip_message_t *msg);
 
 int sal_reason_to_sip_code(SalReason r);

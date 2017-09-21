@@ -352,7 +352,6 @@ int sal_subscribe_decline(SalOp *op, SalReason reason){
 	belle_sip_server_transaction_send_response(op->pending_server_trans,resp);
 	return 0;
 }
-#endif
 
 int sal_notify(SalOp *op, const SalBodyHandler *body_handler){
 	belle_sip_request_t* notify;
@@ -384,4 +383,4 @@ int sal_notify_close(SalOp *op){
 		,BELLE_SIP_HEADER(belle_sip_header_subscription_state_create(BELLE_SIP_SUBSCRIPTION_STATE_TERMINATED,-1)));
 	return sal_op_send_request(op,notify);
 }
-
+#endif

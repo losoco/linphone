@@ -1200,6 +1200,17 @@ SalBodyHandler *SalOp::get_body_handler(belle_sip_message_t *msg) {
 	return (SalBodyHandler *)body_handler;
 }
 
+void SalOp::assign_recv_headers(belle_sip_message_t *incoming) {
+	if (incoming) belle_sip_object_ref(incoming);
+	if (this->recv_custom_headers){
+		belle_sip_object_unref(this->recv_custom_headers);
+		this->recv_custom_headers=NULL;
+	}
+	if (incoming){
+		this->recv_custom_headers=(SalCustomHeader*)incoming;
+	}
+}
+
 int to_sip_code(SalReason r) {
 	int ret=500;
 	switch(r){

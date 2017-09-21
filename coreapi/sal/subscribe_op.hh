@@ -10,6 +10,8 @@ public:
 	int accept();
 	int decline(SalReason reason);
 	int notify_pending_state();
+	int notify(const SalBodyHandler *body_handler);
+	int close_notify();
 
 private:
 	void fill_cbs();

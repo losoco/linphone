@@ -110,6 +110,7 @@ private:
 	friend class MessageOp;
 	friend class PresenceOp;
 	friend class SubscribeOp;
+	friend class PublishOp;
 };
 
 class SalOp {
@@ -222,6 +223,8 @@ protected:
 	void unlink_op_with_dialog(belle_sip_dialog_t* dialog);
 	
 	SalBodyHandler *get_body_handler(belle_sip_message_t *msg);
+	
+	void assign_recv_headers(belle_sip_message_t *incoming);
 	
 	static void assign_address(SalAddress** address, const char *value);
 	static void assign_string(char **str, const char *arg);

@@ -56,7 +56,7 @@ void RegisterOp::register_refresher_listener(belle_sip_refresher_t* refresher, v
 	}
 	sal_error_info_set(&op->error_info,SalReasonUnknown, "SIP", status_code,reason_phrase,NULL);
 	if (status_code>=200){
-		sal_op_assign_recv_headers(op,(belle_sip_message_t*)response);
+		op->assign_recv_headers((belle_sip_message_t*)response);
 	}
 	if(status_code == 200) {
 		/*check service route rfc3608*/

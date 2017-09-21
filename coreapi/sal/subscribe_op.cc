@@ -310,3 +310,34 @@ int SubscribeOp::notify_pending_state() {
 	
 	return 0;
 }
+
+int SubscribeOp::notify(const SalBodyHandler *body_handler) {
+	belle_sip_request_t* notify;
+	
+	if (this->dialog){
+		if (!(notify=belle_sip_dialog_create_queued_request(this->dialog,"NOTIFY"))) return -1;
+	}else{
+		fill_cbs();
+		notify = build_request("NOTIFY");
+	}
+
+	if (this->event) belle_sip_message_add_header(BELLE_SIP_MESSAGE(notify),BELLE_SIP_HEADER(this->event));
+
+	belle_sip_message_add_header(BELLE_SIP_MESSAGE(notify)
+			, this->dialog ? 
+				BELLE_SIP_HEADER(belle_sip_header_subscription_state_create(BELLE_SIP_SUBSCRIPTION_STATE_ACTIVE,600)) :
+				BELLE_SIP_HEADER(belle_sip_header_subscription_state_create(BELLE_SIP_SUBSCRIPTION_STATE_TERMINATED,0))
+				);
+	belle_sip_message_set_body_handler(BELLE_SIP_MESSAGE(notify), BELLE_SIP_BODY_HANDLER(body_handler));
+	return send_request(notify);
+}
+
+int SubscribeOp::close_notify() {
+	belle_sip_request_t* notify;
+	if (!this->dialog) return -1;
+	if (!(notify=belle_sip_dialog_create_queued_request(this->dialog,"NOTIFY"))) return -1;
+	if (this->event) belle_sip_message_add_header(BELLE_SIP_MESSAGE(notify),BELLE_SIP_HEADER(this->event));
+	belle_sip_message_add_header(BELLE_SIP_MESSAGE(notify)
+		,BELLE_SIP_HEADER(belle_sip_header_subscription_state_create(BELLE_SIP_SUBSCRIPTION_STATE_TERMINATED,-1)));
+	return send_request(notify);
+}
