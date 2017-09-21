@@ -170,8 +170,8 @@ void sal_op_presence_fill_cbs(SalOp*op);
 /*messaging*/
 void sal_op_message_fill_cbs(SalOp*op);
 void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *event);
-#endif
 void sal_op_subscribe_fill_cbs(SalOp*op);
+#endif
 
 /*call transfer*/
 void sal_op_process_refer(SalOp *op, const belle_sip_request_event_t *event, belle_sip_server_transaction_t *tr);
@@ -188,9 +188,9 @@ belle_sip_response_t *sal_create_response_from_request(Sal *sal, belle_sip_reque
 
 void sal_op_assign_recv_headers(SalOp *op, belle_sip_message_t *incoming);
 
+#if 0
 SalBodyHandler * sal_op_get_body_handler(SalOp *op, belle_sip_message_t *msg);
 
-#if 0
 int sal_reason_to_sip_code(SalReason r);
 #endif
 

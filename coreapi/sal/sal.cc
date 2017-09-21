@@ -904,7 +904,7 @@ void SalOp::set_entity_tag(const char* entity_tag) {
 	this->entity_tag = entity_tag ? ms_strdup(entity_tag) : NULL;
 }
 
-void SalOp::sal_op_set_event(const char *eventname) {
+void SalOp::set_event(const char *eventname) {
 	belle_sip_header_event_t *header = NULL;
 	if (this->event) belle_sip_object_unref(this->event);
 	if (eventname){
@@ -1185,6 +1185,19 @@ int SalOp::send_info(const char *from, const char *to, const SalBodyHandler *bod
 		ms_error("Cannot send INFO message on op [%p] because dialog is not in confirmed state yet.", this);
 	}
 	return -1;
+}
+
+SalBodyHandler *SalOp::get_body_handler(belle_sip_message_t *msg) {
+	belle_sip_body_handler_t *body_handler = belle_sip_message_get_body_handler(msg);
+	if (body_handler != NULL) {
+		belle_sip_header_content_type_t *content_type = belle_sip_message_get_header_by_type(msg, belle_sip_header_content_type_t);
+		belle_sip_header_content_length_t *content_length = belle_sip_message_get_header_by_type(msg, belle_sip_header_content_length_t);
+		belle_sip_header_t *content_encoding = belle_sip_message_get_header(msg, "Content-Encoding");
+		if (content_type != NULL) belle_sip_body_handler_add_header(body_handler, BELLE_SIP_HEADER(content_type));
+		if (content_length != NULL) belle_sip_body_handler_add_header(body_handler, BELLE_SIP_HEADER(content_length));
+		if (content_encoding != NULL) belle_sip_body_handler_add_header(body_handler, content_encoding);
+	}
+	return (SalBodyHandler *)body_handler;
 }
 
 int to_sip_code(SalReason r) {

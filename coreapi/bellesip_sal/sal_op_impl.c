@@ -770,7 +770,6 @@ const char *sal_op_get_remote_contact(const SalOp *op){
 	 */
 	return op->base.remote_contact;
 }
-#endif
 
 SalBodyHandler * sal_op_get_body_handler(SalOp *op, belle_sip_message_t *msg) {
 	belle_sip_body_handler_t *body_handler = belle_sip_message_get_body_handler(msg);
@@ -784,6 +783,7 @@ SalBodyHandler * sal_op_get_body_handler(SalOp *op, belle_sip_message_t *msg) {
 	}
 	return (SalBodyHandler *)body_handler;
 }
+#endif
 
 void sal_op_set_privacy(SalOp* op,SalPrivacyMask privacy) {
 	op->privacy=privacy;

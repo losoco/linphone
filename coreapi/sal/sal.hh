@@ -6,6 +6,7 @@
 // class SalCall;
 // class RegisterOp;
 // class MessageOp;
+// class SubscribeOp;
 
 class Sal{
 public:
@@ -108,6 +109,7 @@ private:
 	friend class RegisterOp;
 	friend class MessageOp;
 	friend class PresenceOp;
+	friend class SubscribeOp;
 };
 
 class SalOp {
@@ -134,7 +136,7 @@ public:
 	void set_service_route(const SalAddress* service_route);
 	void set_manual_refresher_mode(bool_t enabled) {this->manual_refresher=enabled;}
 	void set_entity_tag(const char* entity_tag);
-	void sal_op_set_event(const char *eventname);
+	void set_event(const char *eventname);
 	
 	const char *get_from() const {return this->from;}
 	const SalAddress *get_from_address() const {return this->from_address;}
@@ -218,6 +220,8 @@ protected:
 	void set_or_update_dialog(belle_sip_dialog_t* dialog);
 	belle_sip_dialog_t *link_op_with_dialog(belle_sip_dialog_t* dialog);
 	void unlink_op_with_dialog(belle_sip_dialog_t* dialog);
+	
+	SalBodyHandler *get_body_handler(belle_sip_message_t *msg);
 	
 	static void assign_address(SalAddress** address, const char *value);
 	static void assign_string(char **str, const char *arg);

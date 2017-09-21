@@ -32,6 +32,7 @@ SalSubscribeStatus belle_sip_message_get_subscription_state(const belle_sip_mess
 	return sss;
 }
 
+#if 0
 static void subscribe_refresher_listener (belle_sip_refresher_t* refresher
 		,void* user_pointer
 		,unsigned int status_code
@@ -351,6 +352,7 @@ int sal_subscribe_decline(SalOp *op, SalReason reason){
 	belle_sip_server_transaction_send_response(op->pending_server_trans,resp);
 	return 0;
 }
+#endif
 
 int sal_notify(SalOp *op, const SalBodyHandler *body_handler){
 	belle_sip_request_t* notify;
