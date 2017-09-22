@@ -25,6 +25,7 @@
 #include "object/object-p.h"
 
 #include "call-session.h"
+#include "sal/sal_call.hh"
 
 // =============================================================================
 
@@ -96,7 +97,7 @@ protected:
 	LinphoneCallLog *log = nullptr;
 	LinphoneNatPolicy *natPolicy = nullptr;
 
-	SalOp *op = nullptr;
+	SalCall *op = nullptr;
 
 	SalOp *pingOp = nullptr;
 	bool pingReplied = false;

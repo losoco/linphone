@@ -31,6 +31,7 @@
 
 #include "linphone/call_stats.h"
 #include "sal/sal.h"
+#include "sal/sal.hh"
 
 #include "private.h"
 
@@ -76,7 +77,7 @@ public:
 	LinphoneCallStats * getStats (LinphoneStreamType type) const;
 	int getStreamIndex (LinphoneStreamType type) const;
 	int getStreamIndex (MediaStream *ms) const;
-	SalOp * getOp () const { return op; }
+	SalCall * getOp () const { return op; }
 	void setAudioMuted (bool value) { audioMuted = value; }
 
 private:

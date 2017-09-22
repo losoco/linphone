@@ -187,7 +187,6 @@ int sal_message_send(SalOp *op, const char *from, const char *to, const char* co
 
 	return retval;
 }
-#endif
 
 int sal_message_reply(SalOp *op, SalReason reason){
 	if (op->pending_server_trans){
@@ -200,7 +199,6 @@ int sal_message_reply(SalOp *op, SalReason reason){
 	return -1;
 }
 
-#if 0
 int sal_text_send(SalOp *op, const char *from, const char *to, const char *msg) {
 	return sal_message_send(op,from,to,"text/plain",msg, NULL);
 }

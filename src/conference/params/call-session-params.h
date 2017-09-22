@@ -25,6 +25,7 @@
 
 #include "linphone/types.h"
 #include "sal/sal.h"
+#include "sal/sal.hh"
 
 // =============================================================================
 

@@ -27,6 +27,7 @@
 #include "address/address.h"
 #include "call/call-listener.h"
 #include "conference/params/media-session-params.h"
+#include "sal/sal_call.hh"
 
 // =============================================================================
 
@@ -42,7 +43,7 @@ class Call : public Object {
 
 public:
 	Call (LinphoneCall *call, LinphoneCore *core, LinphoneCallDir direction, const Address &from, const Address &to,
-		LinphoneProxyConfig *cfg, SalOp *op, const std::shared_ptr<MediaSessionParams> msp);
+		LinphoneProxyConfig *cfg, SalCall *op, const std::shared_ptr<MediaSessionParams> msp);
 
 	LinphoneStatus accept (const std::shared_ptr<MediaSessionParams> msp = nullptr);
 	LinphoneStatus acceptEarlyMedia (const std::shared_ptr<MediaSessionParams> msp = nullptr);

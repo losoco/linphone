@@ -32,6 +32,8 @@
 #include "linphone/core_utils.h"
 #include "linphone/conference.h"
 #include "sal/sal.h"
+#include "sal/sal.hh"
+#include "sal/message_op.hh"
 #include "linphone/sipsetup.h"
 #include "quality_reporting.h"
 #include "linphone/ringtoneplayer.h"
@@ -209,7 +211,7 @@ struct _LinphoneChatMessage {
 	bool_t is_read;
 	unsigned int storage_id;
 	char *message_id;
-	SalOp *op;
+	MessageOp *op;
 	LinphoneContent *file_transfer_information; /**< used to store file transfer information when the message is of file transfer type */
 	char *content_type; /**< is used to specified the type of message to be sent, used only for file transfer message */
 	bool_t to_be_stored;
@@ -482,7 +484,7 @@ int linphone_call_start_update(LinphoneCall *call);
 int linphone_call_start_accept_update(LinphoneCall *call, LinphoneCallState next_state, const char *state_info);
 void linphone_core_notify_incoming_call(LinphoneCore *lc, LinphoneCall *call);
 bool_t linphone_core_incompatible_security(LinphoneCore *lc, SalMediaDescription *md);
-extern SalCallbacks linphone_sal_callbacks;
+extern Sal::Callbacks linphone_sal_callbacks;
 LINPHONE_PUBLIC bool_t linphone_core_rtcp_enabled(const LinphoneCore *lc);
 LINPHONE_PUBLIC bool_t linphone_core_symmetric_rtp_enabled(LinphoneCore*lc);
 

@@ -142,7 +142,7 @@ static void toggle_video_preview(LinphoneCore *lc, bool_t val);
 #define HOLD_MUSIC_WAV "toy-mono.wav"
 #define HOLD_MUSIC_MKV "dont_wait_too_long.mkv"
 
-extern SalCallbacks linphone_sal_callbacks;
+extern Sal::Callbacks linphone_sal_callbacks;
 
 
 static void _linphone_core_cbs_uninit(LinphoneCoreCbs *cbs);

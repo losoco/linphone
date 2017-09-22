@@ -138,46 +138,31 @@ void MessageOp::fill_cbs() {
 	this->type=Type::Message;
 }
 
-int MessageOp::send(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) {
-	belle_sip_request_t* req;
+void MessageOpInterface::prepare_message_request(belle_sip_request_t *req, const char* content_type, const char *msg, const char *peer_uri) {
 	char content_type_raw[256];
 	size_t content_length = msg?strlen(msg):0;
 	time_t curtime = ms_time(NULL);
-	const char *body;
-	int retval;
-	
-	if (this->dialog){
-		/*for SIP MESSAGE that are sent in call's dialog*/
-		req=belle_sip_dialog_create_queued_request(this->dialog,"MESSAGE");
-	}else{
-		fill_cbs();
-		if (from)
-			set_from(from);
-		if (to)
-			set_to(to);
-		this->dir=Dir::Outgoing;
-
-		req=build_request("MESSAGE");
-		if (req == NULL ){
-			return -1;
-		}
-		if (get_contact_address()){
-			belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(create_contact()));
-		}
-	}
-
 	snprintf(content_type_raw,sizeof(content_type_raw),BELLE_SIP_CONTENT_TYPE ": %s",content_type);
 	belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(belle_sip_header_content_type_parse(content_type_raw)));
 	belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(belle_sip_header_content_length_create(content_length)));
 	belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(belle_sip_header_date_create_from_time(&curtime)));
-	body = msg;
-	if (body){
+	if (msg){
 		/*don't call set_body() with null argument because it resets content type and content length*/
-		belle_sip_message_set_body(BELLE_SIP_MESSAGE(req), body, content_length);
+		belle_sip_message_set_body(BELLE_SIP_MESSAGE(req), msg, content_length);
 	}
-	retval = send_request(req);
+}
 
-	return retval;
+int MessageOp::send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) {
+	fill_cbs();
+	if (from) set_from(from);
+	if (to) set_to(to);
+	this->dir=Dir::Outgoing;
+
+	belle_sip_request_t* req=build_request("MESSAGE");
+	if (req == NULL ) return -1;
+	if (get_contact_address()) belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(create_contact()));
+	prepare_message_request(req, content_type, msg, peer_uri);
+	return send_request(req);
 }
 
 int MessageOp::reply(SalReason reason) {

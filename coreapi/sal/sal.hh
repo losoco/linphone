@@ -150,16 +150,12 @@ public:
 	void enable_dns_srv(bool_t enable) {belle_sip_stack_enable_dns_srv(this->stack, (unsigned char)enable);}
 	bool_t dns_srv_enabled() const {return (bool_t)belle_sip_stack_dns_srv_enabled(this->stack);}
 	void enable_dns_search(bool_t enable) {belle_sip_stack_enable_dns_search(this->stack, (unsigned char)enable);}
-	bool_t dns_search_enabled(this) const {return (bool_t)belle_sip_stack_dns_search_enabled(this->stack);}
+	bool_t dns_search_enabled() const {return (bool_t)belle_sip_stack_dns_search_enabled(this->stack);}
 	void set_dns_user_hosts_file(const char *hosts_file) {belle_sip_stack_set_dns_user_hosts_file(this->stack, hosts_file);}
 	const char *get_dns_user_hosts_file() const {return belle_sip_stack_get_dns_user_hosts_file(this->stack);}
 	belle_sip_source_t *create_timer(belle_sip_source_func_t func, void *data, unsigned int timeout_value_ms, const char* timer_name);
 	void cancel_timer(belle_sip_source_t *timer);
 	void *get_stack_impl() {return this->stack;}
-	const char *get_public_address(int *port) {return this->refresher ? belle_sip_refresher_get_public_address(this->refresher, port) : NULL;}
-	const char *get_local_address(int *port) {return this->refresher ? belle_sip_refresher_get_local_address(this->refresher, port) : NULL;}
-	void enable_cnx_ip_to_0000_if_sendonly(bool_t yesno) {this->cnx_ip_to_0000_if_sendonly_enabled = yesno;}
-	bool_t cnx_ip_to_0000_if_sendonly_enabled() const {return this->cnx_ip_to_0000_if_sendonly_enabled;}
 	void set_http_proxy_host(const char *host) {belle_sip_stack_set_http_proxy_host(this->stack, host);}
 	void set_http_proxy_port(int port) {belle_sip_stack_set_http_proxy_port(this->stack, port);}
 	const char *get_http_proxy_host() const {return belle_sip_stack_get_http_proxy_host(this->stack);}
@@ -301,6 +297,12 @@ public:
 	int ping(const char *from, const char *to);
 	int send_info(const char *from, const char *to, const SalBodyHandler *body_handler);
 	
+	const char *get_public_address(int *port) {return this->refresher ? belle_sip_refresher_get_public_address(this->refresher, port) : NULL;}
+	const char *get_local_address(int *port) {return this->refresher ? belle_sip_refresher_get_local_address(this->refresher, port) : NULL;}
+	
+	void enable_cnx_ip_to_0000_if_sendonly(bool_t yesno) {this->_cnx_ip_to_0000_if_sendonly_enabled = yesno;}
+	bool_t cnx_ip_to_0000_if_sendonly_enabled() const {return this->_cnx_ip_to_0000_if_sendonly_enabled;}
+	
 protected:
 	enum class State {
 		Early = 0,
@@ -328,7 +330,7 @@ protected:
 	
 	static const char *to_string(const SalOp::Type type);
 	
-	virtual void fill_cbs() = 0;
+	virtual void fill_cbs() {};
 	void release_impl();
 	void process_authentication();
 	
@@ -399,8 +401,8 @@ protected:
 	
 	// BelleSip implementation
 	const belle_sip_listener_callbacks_t *callbacks = NULL;
-	SalErrorInfo error_info = {0};
-	SalErrorInfo reason_error_info = {0};
+	SalErrorInfo error_info;
+	SalErrorInfo reason_error_info;
 	belle_sip_client_transaction_t *pending_auth_transaction = NULL;
 	belle_sip_server_transaction_t* pending_server_trans = NULL;
 	belle_sip_server_transaction_t* pending_update_server_trans = NULL;
@@ -420,7 +422,7 @@ protected:
 	belle_sip_header_event_t *event = NULL; /*used by SalOpSubscribe kinds*/
 	SalOpSDPHandling sdp_handling = SalOpSDPNormal;
 	int auth_requests = 0; /*number of auth requested for this op*/
-	bool_t cnx_ip_to_0000_if_sendonly_enabled = FALSE;
+	bool_t _cnx_ip_to_0000_if_sendonly_enabled = FALSE;
 	bool_t auto_answer_asked = FALSE;
 	bool_t sdp_offering = FALSE;
 	bool_t call_released = FALSE;

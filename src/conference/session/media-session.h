@@ -42,7 +42,7 @@ public:
 	LinphoneStatus accept (const std::shared_ptr<MediaSessionParams> msp = nullptr);
 	LinphoneStatus acceptEarlyMedia (const std::shared_ptr<MediaSessionParams> msp = nullptr);
 	LinphoneStatus acceptUpdate (const std::shared_ptr<MediaSessionParams> msp);
-	void configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalOp *op, const Address &from, const Address &to);
+	void configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalCall *op, const Address &from, const Address &to);
 	void initiateIncoming ();
 	bool initiateOutgoing ();
 	void iterate (time_t currentRealTime, bool oneSecondElapsed);

@@ -23,9 +23,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #define SIP_MESSAGE_BODY_LIMIT 16*1024 // 16kB
 
+#if 0
 static int extract_sdp(SalOp* op,belle_sip_message_t* message,belle_sdp_session_description_t** session_desc, SalReason *error);
 
-#if 0
 /*used for calls terminated before creation of a dialog*/
 static void call_set_released(SalOp* op){
 	if (!op->call_released){
@@ -860,7 +860,6 @@ void sal_op_call_fill_cbs(SalOp*op) {
 	op->callbacks=&call_op_callbacks;
 	op->type=SalOpCall;
 }
-#endif
 
 static void handle_offer_answer_response(SalOp* op, belle_sip_response_t* response) {
 	if (op->base.local_media){
@@ -889,7 +888,6 @@ static void handle_offer_answer_response(SalOp* op, belle_sip_response_t* respon
 	}
 }
 
-#if 0
 int sal_call_notify_ringing(SalOp *op, bool_t early_media){
 	int status_code =early_media?183:180;
 	belle_sip_request_t* req=belle_sip_transaction_get_request(BELLE_SIP_TRANSACTION(op->pending_server_trans));

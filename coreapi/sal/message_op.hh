@@ -2,13 +2,13 @@
 #define _LINPHONE_SAL_MASSAGE_OP_HH
 
 #include "sal.hh"
+#include "message_op_interface.hh"
 
-class MessageOp: public SalOp {
+class MessageOp: public SalOp, public MessageOpInterface {
 public:
 	MessageOp(Sal *sal): SalOp(sal) {}
 	
-	int send(const char *from, const char *to, const char *msg) {return send(from,to,"text/plain",msg, NULL);}
-	int send(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri);
+	virtual int send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) override;
 	int reply(SalReason reason);
 
 private:

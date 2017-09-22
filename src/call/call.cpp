@@ -189,7 +189,7 @@ void CallPrivate::resetFirstVideoFrameDecoded () {
 // =============================================================================
 
 Call::Call (LinphoneCall *call, LinphoneCore *core, LinphoneCallDir direction, const Address &from, const Address &to,
-	LinphoneProxyConfig *cfg, SalOp *op, const shared_ptr<MediaSessionParams> msp) : Object(*new CallPrivate(call, core, direction, from, to, cfg, op, msp)) {
+	LinphoneProxyConfig *cfg, SalCall *op, const shared_ptr<MediaSessionParams> msp) : Object(*new CallPrivate(call, core, direction, from, to, cfg, op, msp)) {
 	L_D(Call);
 	const Address *myAddress = (direction == LinphoneCallIncoming) ? &to : &from;
 	string confType = lp_config_get_string(linphone_core_get_config(core), "misc", "conference_type", "local");

@@ -17,6 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "sal_impl.h"
+#include "sal/sal.hh"
 
 #if 0
 
@@ -37,7 +38,6 @@ void sal_op_kill_dialog(SalOp *op) {
 	belle_sip_dialog_delete(op->dialog);
 }
 
-#endif
 
 void sal_op_release(SalOp *op){
 	/*if in terminating state, keep this state because it means we are waiting for a response to be able to terminate the operation.*/
@@ -53,7 +53,6 @@ void sal_op_release(SalOp *op){
 	sal_op_unref(op);
 }
 
-#if 0
 void sal_op_release_impl(SalOp *op){
 	ms_message("Destroying op [%p] of type [%s]",op,sal_op_type_to_string(op->type));
 	if (op->pending_auth_transaction) belle_sip_object_unref(op->pending_auth_transaction);
@@ -601,7 +600,7 @@ void sal_error_info_set(SalErrorInfo *ei, SalReason reason, const char *protocol
 	else{
 		ei->reason=reason;
 		if (code == 0) {
-			code = sal_reason_to_sip_code(reason);
+			code = to_sip_code(reason);
 		}
 	}
 	ei->protocol_code=code;

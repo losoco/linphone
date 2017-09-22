@@ -18,6 +18,7 @@
 
 #include "linphone/utils/utils.h"
 #include "sal/sal.h"
+#include "sal/sal.hh"
 
 #include "address-p.h"
 #include "c-wrapper/c-tools.h"

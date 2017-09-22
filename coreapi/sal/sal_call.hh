@@ -2,8 +2,9 @@
 #define _LINPHONE_SAL_CALL_HH
 
 #include "sal.hh"
+#include "message_op_interface.hh"
 
-class SalCall: public SalOp {
+class SalCall: public SalOp, public MessageOpInterface {
 public:
 	SalCall(Sal *sal): SalOp(sal) {}
 	
@@ -32,12 +33,14 @@ public:
 	void send_vfu_request();
 	int is_offerer() const {return this->sdp_offering;}
 	int notify_refer_state(SalOp *newcall);
-	bool_t compare_op(const SalOp *op2) const {return (strcmp(this->call_id, op2->call_id) == 0);}
+	bool_t compare_op(const SalOp *op2) const;
 	bool_t dialog_request_pending() const {return (belle_sip_dialog_request_pending(this->dialog) != 0);}
 	const char *get_local_tag() {return belle_sip_dialog_get_local_tag(this->dialog);}
 	const char *get_remote_tag() {return belle_sip_dialog_get_remote_tag(this->dialog);}
 	void set_replaces(const char *call_id, const char *from_tag, const char *to_tag);
 	void set_sdp_handling(SalOpSDPHandling handling);
+	
+	virtual int send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) override;
 
 private:
 	static belle_sip_header_allow_t *create_allow(bool_t enable_update);

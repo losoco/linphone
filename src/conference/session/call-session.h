@@ -26,6 +26,7 @@
 #include "conference/conference.h"
 #include "conference/params/call-session-params.h"
 #include "conference/session/call-session-listener.h"
+#include "sal/sal_call.hh"
 
 // =============================================================================
 
@@ -42,7 +43,7 @@ public:
 
 	LinphoneStatus accept (const std::shared_ptr<CallSessionParams> csp = nullptr);
 	LinphoneStatus acceptUpdate (const std::shared_ptr<CallSessionParams> csp);
-	virtual void configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalOp *op, const Address &from, const Address &to);
+	virtual void configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalCall *op, const Address &from, const Address &to);
 	LinphoneStatus decline (LinphoneReason reason);
 	LinphoneStatus decline (const LinphoneErrorInfo *ei);
 	virtual void initiateIncoming ();

@@ -1429,3 +1429,14 @@ void SalCall::process_notify(const belle_sip_request_event_t *event, belle_sip_s
 		belle_sip_server_transaction_send_response(server_transaction,resp);
 	}
 }
+
+int SalCall::send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) {
+	if (!this->dialog) return -1;
+	belle_sip_request_t* req=belle_sip_dialog_create_queued_request(this->dialog,"MESSAGE");
+	prepare_message_request(req, content_type, msg, peer_uri);
+	return send_request(req);
+}
+
+bool_t SalCall::compare_op(const SalOp *op2) const {
+	return (strcmp(this->call_id, op2->call_id) == 0);
+}

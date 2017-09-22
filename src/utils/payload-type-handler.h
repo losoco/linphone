@@ -25,6 +25,7 @@
 #include "linphone/payload_type.h"
 #include "linphone/utils/general.h"
 #include "sal/sal.h"
+#include "sal/sal.hh"
 
 // =============================================================================
 

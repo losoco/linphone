@@ -786,6 +786,8 @@ belle_sip_response_t* Sal::create_response_from_request (belle_sip_request_t* re
 SalOp::SalOp(Sal *sal) {
 	this->root = sal;
 	this->sdp_handling = sal->default_sdp_handling;
+	memset(&this->error_info, 0, sizeof(this->error_info));
+	memset(&this->reason_error_info, 0, sizeof(this->reason_error_info));
 	ref();
 }
 
@@ -1053,15 +1055,15 @@ int SalOp::send_request_with_contact(belle_sip_request_t* request, bool_t add_co
 	belle_sip_uri_t *next_hop_uri=NULL;
 
 	if (add_contact && !belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(request),belle_sip_header_contact_t)) {
-		contact = sal_op_create_contact(this);
+		contact = create_contact();
 		belle_sip_message_set_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_HEADER(contact));
 	} /*keep existing*/
 
-	_sal_op_add_custom_headers(this, (belle_sip_message_t*)request);
+	add_custom_headers((belle_sip_message_t*)request);
 
 	if (!this->dialog || belle_sip_dialog_get_state(this->dialog) == BELLE_SIP_DIALOG_NULL) {
 		/*don't put route header if  dialog is in confirmed state*/
-		const MSList *elem=sal_op_get_route_addresses(this);
+		const MSList *elem=get_route_addresses();
 		const char *transport;
 		const char *method=belle_sip_request_get_method(request);
 		belle_sip_listening_point_t *udplp=belle_sip_provider_get_listening_point(prov,"UDP");
@@ -1126,7 +1128,7 @@ int SalOp::send_request_with_contact(belle_sip_request_t* request, bool_t add_co
 	result = belle_sip_client_transaction_send_request_to(client_transaction,next_hop_uri/*might be null*/);
 
 	/*update call id if not set yet for this OP*/
-	if (result == 0 && !op->base.call_id) {
+	if (result == 0 && !this->call_id) {
 		this->call_id=ms_strdup(belle_sip_header_call_id_get_call_id(BELLE_SIP_HEADER_CALL_ID(belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(request), belle_sip_header_call_id_t))));
 	}
 

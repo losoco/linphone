@@ -822,13 +822,11 @@ int sal_iterate(Sal *sal){
 	belle_sip_stack_sleep(sal->stack,0);
 	return 0;
 }
-#endif
 
 bctbx_list_t * sal_get_pending_auths(Sal *sal){
 	return bctbx_list_copy(sal->pending_auths);
 }
 
-#if 0
 /*misc*/
 void sal_get_default_local_ip(Sal *sal, int address_family, char *ip, size_t iplen){
 	strncpy(ip,address_family==AF_INET6 ? "::1" : "127.0.0.1",iplen);
@@ -852,11 +850,9 @@ void sal_set_dscp(Sal *ctx, int dscp){
 void  sal_set_send_error(Sal *sal,int value) {
 	 belle_sip_stack_set_send_error(sal->stack,value);
 }
-#endif
 void  sal_set_recv_error(Sal *sal,int value) {
 	 belle_sip_provider_set_recv_error(sal->prov,value);
 }
-#if 0
 void sal_nat_helper_enable(Sal *sal,bool_t enable) {
 	sal->nat_helper_enabled=enable;
 	belle_sip_provider_enable_nat_helper(sal->prov,enable);
@@ -1175,7 +1171,6 @@ void sal_remove_supported_tag(Sal *ctx, const char* tag){
 		make_supported_header(ctx);
 	}
 }
-#endif
 
 
 
@@ -1186,17 +1181,14 @@ belle_sip_response_t* sal_create_response_from_request ( Sal* sal, belle_sip_req
 	return resp;
 }
 
-#if 0
 void sal_set_refresher_retry_after(Sal *sal,int value) {
 	sal->refresher_retry_after=value;
 }
-#endif
 
 int sal_get_refresher_retry_after(const Sal *sal) {
 	return sal->refresher_retry_after;
 }
 
-#if 0
 void sal_enable_auto_contacts(Sal *ctx, bool_t enabled){
 	ctx->auto_contacts=enabled;
 }
@@ -1212,14 +1204,12 @@ void sal_use_no_initial_route(Sal *ctx, bool_t enabled){
 belle_sip_resolver_context_t * sal_resolve_a(Sal* sal, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data){
 	return belle_sip_stack_resolve_a(sal->stack,name,port,family,cb,data);
 }
-#endif
 
 belle_sip_resolver_context_t * sal_resolve(Sal *sal, const char *service, const char *transport, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data) {
 	return belle_sip_stack_resolve(sal->stack, service, transport, name, port, family, cb, data);
 }
 
 
-#if 0
 void sal_enable_unconditional_answer(Sal *sal,int value) {
 	belle_sip_provider_enable_unconditional_answer(sal->prov,value);
 }
@@ -1325,12 +1315,13 @@ belle_sip_source_t * sal_create_timer(Sal *sal, belle_sip_source_func_t func, vo
 	belle_sip_main_loop_t *ml = belle_sip_stack_get_main_loop(sal->stack);
 	return belle_sip_main_loop_create_timeout(ml, func, data, timeout_value_ms, timer_name);
 }
-#endif
 
 void sal_cancel_timer(Sal *sal, belle_sip_source_t *timer) {
 	belle_sip_main_loop_t *ml = belle_sip_stack_get_main_loop(sal->stack);
 	belle_sip_main_loop_remove_source(ml, timer);
 }
+
+#endif
 
 unsigned long sal_begin_background_task(const char *name, void (*max_time_reached)(void *), void *data){
 	return belle_sip_begin_background_task(name, max_time_reached, data);
@@ -1503,7 +1494,6 @@ const char * sal_body_handler_get_header(const SalBodyHandler *body_handler, con
 	return NULL;
 }
 
-#if 0
 void *sal_get_stack_impl(Sal *sal) {
 	return sal->stack;
 }

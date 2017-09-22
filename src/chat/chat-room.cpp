@@ -26,6 +26,7 @@
 #include "utils/content-type.h"
 
 #include "chat-room.h"
+#include "sal/message_op.hh"
 
 // =============================================================================
 
@@ -127,7 +128,7 @@ void ChatRoomPrivate::sendImdn (const string &content, LinphoneReason reason) {
 		identity = linphone_core_get_primary_contact(core);
 
 	/* Sending out of call */
-	SalOp *op = sal_op_new(core->sal);
+	MessageOp *op = new MessageOp(core->sal);
 	linphone_configure_op(core, op, peerAddress, nullptr, lp_config_get_int(core->config, "sip", "chat_msg_with_contact", 0));
 	LinphoneChatMessage *msg = q->createMessage(content);
 	LinphoneAddress *fromAddr = linphone_address_new(identity);
@@ -148,13 +149,13 @@ void ChatRoomPrivate::sendImdn (const string &content, LinphoneReason reason) {
 	}
 
 	if (retval <= 0) {
-		sal_message_send(op, identity, peer.c_str(), msg->content_type, msg->message, nullptr);
+		op->send_message(identity, peer.c_str(), msg->content_type, msg->message, nullptr);
 	}
 
 	linphone_chat_message_unref(msg);
 	linphone_address_unref(fromAddr);
 	linphone_address_unref(toAddr);
-	sal_op_unref(op);
+	op->unref();
 }
 
 // -----------------------------------------------------------------------------
@@ -205,7 +206,7 @@ void ChatRoomPrivate::sendIsComposingNotification () {
 			identity = linphone_core_get_primary_contact(core);
 
 		/* Sending out of call */
-		SalOp *op = sal_op_new(core->sal);
+		MessageOp *op = new MessageOp(core->sal);
 		linphone_configure_op(core, op, peerAddress, nullptr, lp_config_get_int(core->config, "sip", "chat_msg_with_contact", 0));
 		string content = isComposingHandler.marshal(isComposing);
 		if (!content.empty()) {
@@ -226,12 +227,12 @@ void ChatRoomPrivate::sendIsComposingNotification () {
 			}
 
 			if (retval <= 0) {
-				sal_message_send(op, identity, peer.c_str(), msg->content_type, msg->message, nullptr);
+				op->send_message(identity, peer.c_str(), msg->content_type, msg->message, nullptr);
 			}
 
 			linphone_chat_message_unref(msg);
 			linphone_address_unref(fromAddr);
-			sal_op_unref(op);
+			op->unref();
 		}
 	}
 }
@@ -392,7 +393,7 @@ LinphoneReason ChatRoomPrivate::messageReceived (SalOp *op, const SalMessage *sa
 	LinphoneChatMessage *msg;
 
 	/* Check if this is a duplicate message */
-	if ((msg = q->findMessageWithDirection(sal_op_get_call_id(op), LinphoneChatMessageIncoming))) {
+	if ((msg = q->findMessageWithDirection(op->get_call_id(), LinphoneChatMessageIncoming))) {
 		reason = core->chat_deny_code;
 		if (msg)
 			linphone_chat_message_unref(msg);
@@ -403,14 +404,14 @@ LinphoneReason ChatRoomPrivate::messageReceived (SalOp *op, const SalMessage *sa
 	linphone_chat_message_set_content_type(msg, salMsg->content_type);
 	linphone_chat_message_set_from(msg, peerAddress);
 
-	LinphoneAddress *to = sal_op_get_to(op) ? linphone_address_new(sal_op_get_to(op)) : linphone_address_new(linphone_core_get_identity(core));
+	LinphoneAddress *to = op->get_to() ? linphone_address_new(op->get_to()) : linphone_address_new(linphone_core_get_identity(core));
 	msg->to = to;
 	msg->time = salMsg->time;
 	msg->state = LinphoneChatMessageStateDelivered;
 	msg->dir = LinphoneChatMessageIncoming;
-	msg->message_id = ms_strdup(sal_op_get_call_id(op));
+	msg->message_id = ms_strdup(op->get_call_id());
 
-	const SalCustomHeader *ch = sal_op_get_recv_custom_header(op);
+	const SalCustomHeader *ch = op->get_recv_custom_header();
 	if (ch)
 		msg->custom_headers = sal_custom_header_clone(ch);
 	if (salMsg->url)
@@ -903,30 +904,31 @@ void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
 
 		if (!op) {
 			/* Sending out of call */
-			msg->op = op = sal_op_new(d->core->sal);
+			op = msg->op = new MessageOp(d->core->sal);
 			linphone_configure_op(d->core, op, d->peerAddress, msg->custom_headers,
 				lp_config_get_int(d->core->config, "sip", "chat_msg_with_contact", 0));
-			sal_op_set_user_pointer(op, msg); /* If out of call, directly store msg */
+			op->set_user_pointer(msg); /* If out of call, directly store msg */
 		}
 
 		if (retval > 0) {
-			sal_error_info_set((SalErrorInfo *)sal_op_get_error_info(op), SalReasonNotAcceptable, "SIP", retval, "Unable to encrypt IM", nullptr);
+			sal_error_info_set((SalErrorInfo *)op->get_error_info(), SalReasonNotAcceptable, "SIP", retval, "Unable to encrypt IM", nullptr);
 			d->storeOrUpdateMessage(msg);
 			linphone_chat_message_update_state(msg, LinphoneChatMessageStateNotDelivered);
 			linphone_chat_message_unref(msg);
 			return;
 		}
-
+		
+		auto msgOp = dynamic_cast<MessageOpInterface *>(op);
 		if (msg->external_body_url) {
 			char *content_type = ms_strdup_printf("message/external-body; access-type=URL; URL=\"%s\"", msg->external_body_url);
-			sal_message_send(op, identity, d->peer.c_str(), content_type, nullptr, nullptr);
+			msgOp->send_message(identity, d->peer.c_str(), content_type, nullptr, nullptr);
 			ms_free(content_type);
 		} else {
 			char *peerUri = linphone_address_as_string_uri_only(d->peerAddress);
 			if (msg->content_type) {
-				sal_message_send(op, identity, d->peer.c_str(), msg->content_type, msg->message, peerUri);
+				msgOp->send_message(identity, d->peer.c_str(), msg->content_type, msg->message, peerUri);
 			} else {
-				sal_text_send(op, identity, d->peer.c_str(), msg->message);
+				msgOp->send_message(identity, d->peer.c_str(), msg->message);
 			}
 			ms_free(peerUri);
 		}
@@ -941,7 +943,7 @@ void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
 			ms_free(msg->content_type);
 			msg->content_type = ms_strdup(clearTextContentType);
 		}
-		msg->message_id = ms_strdup(sal_op_get_call_id(op));     /* must be known at that time */
+		msg->message_id = ms_strdup(op->get_call_id());     /* must be known at that time */
 		d->storeOrUpdateMessage(msg);
 
 		if (d->isComposing)
