@@ -51,11 +51,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define PAYLOAD_TYPE_FLAG_CAN_RECV	PAYLOAD_TYPE_USER_FLAG_1
 #define PAYLOAD_TYPE_FLAG_CAN_SEND	PAYLOAD_TYPE_USER_FLAG_2
 #endif
+#if 0
 struct Sal;
 
 typedef struct Sal Sal;
 
-#if 0
 struct SalOp;
 
 typedef struct SalOp SalOp;
@@ -146,12 +146,16 @@ const char *sal_address_get_password(const SalAddress *addr);
 void sal_address_set_header(SalAddress *addr, const char *header_name, const char *header_value);
 const char *sal_address_get_header(const SalAddress *addr, const char *name);
 
+#if 0
 LINPHONE_PUBLIC Sal * sal_init(MSFactory *factory);
 LINPHONE_PUBLIC void sal_uninit(Sal* sal);
+#endif
 
 void sal_set_log_handler(BctbxLogFunc log_handler);
+#if 0
 void sal_set_user_pointer(Sal *sal, void *user_data);
 void *sal_get_user_pointer(const Sal *sal);
+#endif
 
 #ifdef __cplusplus
 }
@@ -267,8 +271,8 @@ typedef struct SalStreamDescription{
 	char rtcp_cname[256];
 	int rtp_port;
 	int rtcp_port;
-	MSList *payloads; /*<list of PayloadType */
-	MSList *already_assigned_payloads; /*<list of PayloadType offered in the past, used for correct allocation of payload type numbers*/
+	MSList *payloads; /**<list of PayloadType */
+	MSList *already_assigned_payloads; /**<list of PayloadType offered in the past, used for correct allocation of payload type numbers*/
 	int bandwidth;
 	int ptime;
 	SalStreamDir dir;
@@ -528,6 +532,7 @@ typedef struct SalAuthInfo{
 	belle_sip_certificates_chain_t *certificates;
 }SalAuthInfo;
 
+#if 0
 typedef void (*SalOnCallReceived)(SalOp *op);
 typedef void (*SalOnCallRinging)(SalOp *op);
 typedef void (*SalOnCallAccepted)(SalOp *op);
@@ -604,6 +609,7 @@ typedef struct SalCallbacks{
 	SalOnExpire on_expire;
 	SalOnNotifyResponse on_notify_response;
 }SalCallbacks;
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -778,8 +784,10 @@ bool_t sal_op_is_idle(SalOp *op);
 #endif
 
 const SalErrorInfo *sal_error_info_none(void);
+#if 0
 LINPHONE_PUBLIC const SalErrorInfo *sal_op_get_error_info(const SalOp *op);
 const SalErrorInfo *sal_op_get_reason_error_info(const SalOp *op);
+#endif
 void sal_error_info_reset(SalErrorInfo *ei);
 void sal_error_info_init_to_null(SalErrorInfo *sei);
 void sal_error_info_set(SalErrorInfo *ei, SalReason reason, const char *protocol, int code, const char *status_string, const char *warning);
@@ -912,8 +920,10 @@ extern "C" {
 #endif
 
 const char* sal_privacy_to_string(SalPrivacy  privacy);
+#if 0
 void sal_op_set_privacy(SalOp* op,SalPrivacyMask privacy);
 SalPrivacyMask sal_op_get_privacy(const SalOp* op);
+#endif
 
 #ifdef __cplusplus
 }
@@ -928,12 +938,14 @@ SalPrivacyMask sal_op_get_privacy(const SalOp* op);
 extern "C" {
 #endif
 
+#if 0
 /*misc*/
 void sal_get_default_local_ip(Sal *sal, int address_family, char *ip, size_t iplen);
 
 
 LINPHONE_PUBLIC belle_sip_resolver_context_t * sal_resolve_a(Sal* sal, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data);
 LINPHONE_PUBLIC belle_sip_resolver_context_t * sal_resolve(Sal *sal, const char *service, const char *transport, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data);
+#endif
 
 SalCustomHeader *sal_custom_header_ref(SalCustomHeader *ch);
 void sal_custom_header_unref(SalCustomHeader *ch);
@@ -943,9 +955,11 @@ SalCustomHeader *sal_custom_header_remove(SalCustomHeader *ch, const char *name)
 void sal_custom_header_free(SalCustomHeader *ch);
 SalCustomHeader *sal_custom_header_clone(const SalCustomHeader *ch);
 
+#if 0
 const SalCustomHeader *sal_op_get_recv_custom_header(SalOp *op);
 
 void sal_op_set_sent_custom_header(SalOp *op, SalCustomHeader* ch);
+#endif
 
 
 SalCustomSdpAttribute * sal_custom_sdp_attribute_append(SalCustomSdpAttribute *csa, const char *name, const char *value);
@@ -959,6 +973,7 @@ void sal_enable_log(void);
 void sal_disable_log(void);
 void sal_set_log_level(OrtpLogLevel level);
 
+#if 0
 /*internal API */
 void __sal_op_init(SalOp *b, Sal *sal);
 void __sal_op_set_network_origin(SalOp *op, const char *origin /*a sip uri*/);
@@ -998,11 +1013,14 @@ LINPHONE_PUBLIC void sal_enable_dns_search(Sal *sal, bool_t enable);
 LINPHONE_PUBLIC bool_t sal_dns_search_enabled(const Sal *sal);
 LINPHONE_PUBLIC void sal_set_dns_user_hosts_file(Sal *sal, const char *hosts_file);
 LINPHONE_PUBLIC const char *sal_get_dns_user_hosts_file(const Sal *sal);
+#endif
 unsigned int sal_get_random(void);
 LINPHONE_PUBLIC char *sal_get_random_token(int size);
 unsigned char * sal_get_random_bytes(unsigned char *ret, size_t size);
+#if 0
 belle_sip_source_t * sal_create_timer(Sal *sal, belle_sip_source_func_t func, void *data, unsigned int timeout_value_ms, const char* timer_name);
 void sal_cancel_timer(Sal *sal, belle_sip_source_t *timer);
+#endif
 
 //SalBodyHandler * sal_body_handler_new(const char *type, const char *subtype, void *data, size_t size, const char *encoding);
 SalBodyHandler * sal_body_handler_new(void);
@@ -1026,14 +1044,17 @@ const char * sal_body_handler_get_header(const SalBodyHandler *body_handler, con
 /*this function parses a document with key=value pairs separated by new lines, and extracts the value for a given key*/
 int sal_lines_get_value(const char *data, const char *key, char *value, size_t value_size);
 
+#if 0
 LINPHONE_PUBLIC void *sal_get_stack_impl(Sal *sal);
 const char* sal_op_get_public_address(SalOp *sal, int *port);
 const char* sal_op_get_local_address(SalOp *sal, int *port);
+#endif
 
 unsigned long sal_begin_background_task(const char *name, void (*max_time_reached)(void *), void *data);
 void sal_end_background_task(unsigned long id);
 
 /*Some old equipment may not only rely on attribute sendonly/recvonly/sendrecv/inative*/
+#if 0
 void sal_op_cnx_ip_to_0000_if_sendonly_enable(SalOp *sal,bool_t yesno);
 bool_t sal_op_cnx_ip_to_0000_if_sendonly_enabled(SalOp *sal);
 
@@ -1041,6 +1062,7 @@ void sal_set_http_proxy_host(Sal *sal, const char *host) ;
 void sal_set_http_proxy_port(Sal *sal, int port) ;
 const char *sal_get_http_proxy_host(const Sal *sal);
 int sal_get_http_proxy_port(const Sal *sal);
+#endif
 
 #ifdef __cplusplus
 }

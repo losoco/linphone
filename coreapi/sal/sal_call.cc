@@ -1359,3 +1359,73 @@ void SalCall::set_sdp_handling(SalOpSDPHandling handling) {
 	if (handling != SalOpSDPNormal) ms_message("Enabling special SDP handling for SalOp[%p]!", this);
 	this->sdp_handling = handling;
 }
+
+void SalCall::process_refer(const belle_sip_request_event_t *event, belle_sip_server_transaction_t *server_transaction) {
+	belle_sip_request_t* req = belle_sip_request_event_get_request(event);
+	belle_sip_header_refer_to_t *refer_to= belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(req),belle_sip_header_refer_to_t);
+	belle_sip_header_referred_by_t *referred_by= belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(req),belle_sip_header_referred_by_t);
+	belle_sip_response_t* resp;
+	belle_sip_uri_t* refer_to_uri;
+	char* refer_to_uri_str;
+	
+	ms_message("Receiving REFER request on op [%p]", this);
+	if (refer_to) {
+		refer_to_uri=belle_sip_header_address_get_uri(BELLE_SIP_HEADER_ADDRESS(refer_to));
+
+		if (refer_to_uri && belle_sip_uri_get_header(refer_to_uri,"Replaces")) {
+			SalOp::set_replaces(belle_sip_header_replaces_create2(belle_sip_uri_get_header(refer_to_uri,"Replaces")));
+			belle_sip_uri_remove_header(refer_to_uri,"Replaces");
+		}
+		if (referred_by){
+			set_referred_by(referred_by);
+		}
+		refer_to_uri_str=belle_sip_uri_to_string(refer_to_uri);
+		resp = create_response_from_request(req,202);
+		belle_sip_server_transaction_send_response(server_transaction,resp);
+		this->root->callbacks.refer_received(this->root,this,refer_to_uri_str);
+		belle_sip_free(refer_to_uri_str);
+	} else {
+		ms_warning("cannot do anything with the refer without destination\n");
+		resp = sal_op_create_response_from_request(op,req,400);
+		belle_sip_server_transaction_send_response(server_transaction,resp);
+	}
+
+}
+
+void SalCall::process_notify(const belle_sip_request_event_t *event, belle_sip_server_transaction_t* server_transaction) {
+	belle_sip_request_t* req = belle_sip_request_event_get_request(event);
+	const char* body = belle_sip_message_get_body(BELLE_SIP_MESSAGE(req));
+	belle_sip_header_t* header_event=belle_sip_message_get_header(BELLE_SIP_MESSAGE(req),"Event");
+	belle_sip_header_content_type_t* content_type = belle_sip_message_get_header_by_type(req,belle_sip_header_content_type_t);
+	belle_sip_response_t* resp;
+
+	ms_message("Receiving NOTIFY request on op [%p]", this);
+	if (header_event
+	&& strncasecmp(belle_sip_header_get_unparsed_value(header_event),"refer",strlen("refer"))==0
+	&& content_type
+	&& strcmp(belle_sip_header_content_type_get_type(content_type),"message")==0
+	&& strcmp(belle_sip_header_content_type_get_subtype(content_type),"sipfrag")==0
+	&& body){
+		belle_sip_response_t* sipfrag=BELLE_SIP_RESPONSE(belle_sip_message_parse(body));
+
+		if (sipfrag){
+			int code=belle_sip_response_get_status_code(sipfrag);
+			SalReferStatus status=SalReferFailed;
+			if (code<200){
+				status=SalReferTrying;
+			}else if (code<300){
+				status=SalReferSuccess;
+			}else if (code>=400){
+				status=SalReferFailed;
+			}
+			belle_sip_object_unref(sipfrag);
+			resp = create_response_from_request(req,200);
+			belle_sip_server_transaction_send_response(server_transaction,resp);
+			this->root->callbacks.notify_refer(this,status);
+		}
+	}else{
+		ms_error("Notify without sipfrag, trashing");
+		resp = create_response_from_request(req,501);
+		belle_sip_server_transaction_send_response(server_transaction,resp);
+	}
+}

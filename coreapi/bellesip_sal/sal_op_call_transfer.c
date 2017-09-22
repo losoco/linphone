@@ -202,7 +202,6 @@ int sal_call_notify_refer_state(SalOp *op, SalOp *newcall){
 	}
 	return 0;
 }
-#endif
 
 
 void sal_op_process_refer(SalOp *op, const belle_sip_request_event_t *event, belle_sip_server_transaction_t *server_transaction){
@@ -274,4 +273,4 @@ void sal_op_call_process_notify(SalOp *op, const belle_sip_request_event_t *even
 		belle_sip_server_transaction_send_response(server_transaction,resp);
 	}
 }
-
+#endif

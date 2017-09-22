@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "config.h"
 #endif
 
+#if 0
 /*
 rfc3323
 4.2 Expressing Privacy Preferences
@@ -31,7 +32,7 @@ When a Privacy header is constructed, it MUST consist of either the
    'session' (each of which MUST appear at most once) which MAY in turn
    be followed by the 'critical' indicator.
  */
-void sal_op_set_privacy_from_message(SalOp* op,belle_sip_message_t* msg) {
+void set_privacy_from_message(belle_sip_message_t* msg) {
 	belle_sip_header_privacy_t* privacy = belle_sip_message_get_header_by_type(msg,belle_sip_header_privacy_t);
 	if (!privacy) {
 		sal_op_set_privacy(op,SalPrivacyNone);
@@ -57,7 +58,6 @@ void sal_op_set_privacy_from_message(SalOp* op,belle_sip_message_t* msg) {
 		}
 	}
 }
-#if 0
 static void set_tls_properties(Sal *ctx);
 #endif
 
@@ -112,7 +112,6 @@ void sal_remove_pending_auth(Sal *sal, SalOp *op){
 		}
 	}
 }
-#endif
 
 void sal_process_authentication(SalOp *op) {
 	belle_sip_request_t* initial_request=belle_sip_transaction_get_request((belle_sip_transaction_t*)op->pending_auth_transaction);
@@ -367,7 +366,7 @@ static void process_request_event(void *ud, const belle_sip_request_event_t *eve
 
 }
 
-static void process_response_event(void *user_ctx, const belle_sip_response_event_t *event){
+static void Sal::process_response_event(void *user_ctx, const belle_sip_response_event_t *event){
 	belle_sip_client_transaction_t* client_transaction = belle_sip_response_event_get_client_transaction(event);
 	belle_sip_response_t* response = belle_sip_response_event_get_response(event);
 	int response_code = belle_sip_response_get_status_code(response);
@@ -532,7 +531,6 @@ void *sal_get_user_pointer(const Sal *sal){
 	return sal->up;
 }
 
-#if 0
 static void unimplemented_stub(void){
 	ms_warning("Unimplemented SAL callback");
 }
@@ -830,13 +828,13 @@ bctbx_list_t * sal_get_pending_auths(Sal *sal){
 	return bctbx_list_copy(sal->pending_auths);
 }
 
+#if 0
 /*misc*/
 void sal_get_default_local_ip(Sal *sal, int address_family, char *ip, size_t iplen){
 	strncpy(ip,address_family==AF_INET6 ? "::1" : "127.0.0.1",iplen);
 	ms_error("sal_get_default_local_ip() is deprecated.");
 }
 
-#if 0
 const char *sal_get_root_ca(Sal* ctx) {
 	return ctx->root_ca;
 }
@@ -850,14 +848,15 @@ int sal_reset_transports(Sal *ctx){
 void sal_set_dscp(Sal *ctx, int dscp){
 	belle_sip_stack_set_default_dscp(ctx->stack,dscp);
 }
-#endif
 
 void  sal_set_send_error(Sal *sal,int value) {
 	 belle_sip_stack_set_send_error(sal->stack,value);
 }
+#endif
 void  sal_set_recv_error(Sal *sal,int value) {
 	 belle_sip_provider_set_recv_error(sal->prov,value);
 }
+#if 0
 void sal_nat_helper_enable(Sal *sal,bool_t enable) {
 	sal->nat_helper_enabled=enable;
 	belle_sip_provider_enable_nat_helper(sal->prov,enable);
@@ -916,6 +915,7 @@ void sal_set_dns_user_hosts_file(Sal *sal, const char *hosts_file) {
 const char * sal_get_dns_user_hosts_file(const Sal *sal) {
 	return belle_sip_stack_get_dns_user_hosts_file(sal->stack);
 }
+#endif
 
 SalAuthInfo* sal_auth_info_create(belle_sip_auth_event_t* event) {
 	SalAuthInfo* auth_info = sal_auth_info_new();
@@ -937,6 +937,7 @@ void sal_signing_key_delete(belle_sip_signing_key_t *key) {
 	belle_sip_object_unref((belle_sip_object_t *)key);
 }
 
+#if 0
 const char* sal_op_type_to_string(const SalOpType type) {
 	switch(type) {
 	case SalOpRegister: return "SalOpRegister";
@@ -948,7 +949,6 @@ const char* sal_op_type_to_string(const SalOpType type) {
 	}
 }
 
-#if 0
 void sal_use_dates(Sal *ctx, bool_t enabled){
 	ctx->use_dates=enabled;
 }
@@ -1015,10 +1015,12 @@ SalCustomHeader *sal_custom_header_clone(const SalCustomHeader *ch){
 	return (SalCustomHeader*)belle_sip_object_ref((belle_sip_message_t*)ch);
 }
 
+#if 0
 const SalCustomHeader *sal_op_get_recv_custom_header(SalOp *op){
 	SalOpBase *b=(SalOpBase *)op;
 	return b->recv_custom_headers;
 }
+#endif
 
 SalCustomSdpAttribute * sal_custom_sdp_attribute_append(SalCustomSdpAttribute *csa, const char *name, const char *value) {
 	belle_sdp_session_description_t *desc = (belle_sdp_session_description_t *)csa;
@@ -1184,9 +1186,11 @@ belle_sip_response_t* sal_create_response_from_request ( Sal* sal, belle_sip_req
 	return resp;
 }
 
+#if 0
 void sal_set_refresher_retry_after(Sal *sal,int value) {
 	sal->refresher_retry_after=value;
 }
+#endif
 
 int sal_get_refresher_retry_after(const Sal *sal) {
 	return sal->refresher_retry_after;
@@ -1204,20 +1208,22 @@ void sal_enable_test_features(Sal*ctx, bool_t enabled){
 void sal_use_no_initial_route(Sal *ctx, bool_t enabled){
 	ctx->no_initial_route=enabled;
 }
-#endif
 
 belle_sip_resolver_context_t * sal_resolve_a(Sal* sal, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data){
 	return belle_sip_stack_resolve_a(sal->stack,name,port,family,cb,data);
 }
+#endif
 
 belle_sip_resolver_context_t * sal_resolve(Sal *sal, const char *service, const char *transport, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data) {
 	return belle_sip_stack_resolve(sal->stack, service, transport, name, port, family, cb, data);
 }
 
 
+#if 0
 void sal_enable_unconditional_answer(Sal *sal,int value) {
 	belle_sip_provider_enable_unconditional_answer(sal->prov,value);
 }
+#endif
 
 /** Parse a file containing either a certificate chain order in PEM format or a single DER cert
  * @param auth_info structure where to store the result of parsing
@@ -1314,10 +1320,12 @@ unsigned int sal_get_random(void){
 	return ret;
 }
 
+#if 0
 belle_sip_source_t * sal_create_timer(Sal *sal, belle_sip_source_func_t func, void *data, unsigned int timeout_value_ms, const char* timer_name) {
 	belle_sip_main_loop_t *ml = belle_sip_stack_get_main_loop(sal->stack);
 	return belle_sip_main_loop_create_timeout(ml, func, data, timeout_value_ms, timer_name);
 }
+#endif
 
 void sal_cancel_timer(Sal *sal, belle_sip_source_t *timer) {
 	belle_sip_main_loop_t *ml = belle_sip_stack_get_main_loop(sal->stack);
@@ -1341,7 +1349,6 @@ void sal_default_set_sdp_handling(Sal *sal, SalOpSDPHandling sdp_handling_method
 	if (sdp_handling_method != SalOpSDPNormal ) ms_message("Enabling special SDP handling for all new SalOp in Sal[%p]!", sal);
 	sal->default_sdp_handling = sdp_handling_method;
 }
-#endif
 
 bool_t sal_pending_trans_checking_enabled(const Sal *sal) {
 	return sal->pending_trans_checking;
@@ -1496,11 +1503,11 @@ const char * sal_body_handler_get_header(const SalBodyHandler *body_handler, con
 	return NULL;
 }
 
+#if 0
 void *sal_get_stack_impl(Sal *sal) {
 	return sal->stack;
 }
 
-#if 0
 bool_t sal_is_content_type_supported(const Sal *sal, const char *content_type) {
 	bctbx_list_t *item;
 	for (item = sal->supported_content_types; item != NULL; item = bctbx_list_next(item)) {

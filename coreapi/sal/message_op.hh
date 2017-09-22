@@ -5,12 +5,14 @@
 
 class MessageOp: public SalOp {
 public:
+	MessageOp(Sal *sal): SalOp(sal) {}
+	
 	int send(const char *from, const char *to, const char *msg) {return send(from,to,"text/plain",msg, NULL);}
 	int send(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri);
 	int reply(SalReason reason);
 
 private:
-	void fill_cbs();
+	virtual void fill_cbs() override;
 	void process_error();
 	void process_incoming_message(const belle_sip_request_event_t *event);
 	void add_message_accept(belle_sip_message_t *msg);

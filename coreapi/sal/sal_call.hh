@@ -5,6 +5,8 @@
 
 class SalCall: public SalOp {
 public:
+	SalCall(Sal *sal): SalOp(sal) {}
+	
 	int set_local_media_description(SalMediaDescription *desc);
 	int set_local_custom_body(SalCustomBody *body);
 	
@@ -64,12 +66,14 @@ private:
 	static void process_request_event_cb(void *op_base, const belle_sip_request_event_t *event);
 	static void set_call_as_released(SalCall *op);
 	static void process_dialog_terminated_cb(void *ctx, const belle_sip_dialog_terminated_event_t *event);
-	void fill_cbs();
+	virtual void fill_cbs() override;
 	void fill_invite(belle_sip_request_t* invite);
 	static belle_sip_header_reason_t *make_reason_header( const SalErrorInfo *info);
 	int refer_to(belle_sip_header_refer_to_t* refer_to, belle_sip_header_referred_by_t* referred_by);
 	void notify_last_response(SalOp *newcall);
 	int send_notify_for_refer(int code, const char *reason);
+	void process_refer(const belle_sip_request_event_t *event, belle_sip_server_transaction_t *server_transaction);
+	void process_notify(const belle_sip_request_event_t *event, belle_sip_server_transaction_t* server_transaction);
 };
 
 #endif

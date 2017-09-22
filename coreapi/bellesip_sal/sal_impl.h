@@ -82,10 +82,8 @@ typedef enum SalOpType {
 	SalOpPublish,
 	SalOpSubscribe
 }SalOpType;
-#endif
 
 const char* sal_op_type_to_string(SalOpType type);
-#if 0
 struct SalOp{
 	SalOpBase base;
 	const belle_sip_listener_callbacks_t *callbacks;
@@ -122,7 +120,7 @@ struct SalOp{
 #endif
 
 
-belle_sdp_session_description_t * media_description_to_sdp(const SalMediaDescription *sal);
+belle_sdp_session_description_t * media_description_to_sdp(const SalMediaDescription *desc);
 int sdp_to_media_description(belle_sdp_session_description_t  *sdp, SalMediaDescription *desc);
 #if 0
 belle_sip_request_t* sal_op_build_request(SalOp *op,const char* method);
@@ -140,15 +138,12 @@ void* sal_op_unref(SalOp* op);
 void sal_op_release_impl(SalOp *op);
 
 void sal_op_set_replaces(SalOp* op,belle_sip_header_replaces_t* replaces);
-#endif
 void sal_op_set_remote_ua(SalOp*op,belle_sip_message_t* message);
-#if 0
 int sal_op_send_request(SalOp* op, belle_sip_request_t* request);
 int sal_op_send_request_with_expires(SalOp* op, belle_sip_request_t* request,int expires);
 void sal_op_resend_request(SalOp* op, belle_sip_request_t* request);
 int sal_op_send_and_create_refresher(SalOp* op,belle_sip_request_t* req, int expires,belle_sip_refresher_listener_t listener );
 belle_sip_response_t *sal_op_create_response_from_request(SalOp *op, belle_sip_request_t *req, int code);
-#endif
 
 /*
  * return true if both from and to uri are sips
@@ -156,7 +151,6 @@ belle_sip_response_t *sal_op_create_response_from_request(SalOp *op, belle_sip_r
 bool_t sal_op_is_secure(const SalOp* op);
 
 void sal_process_authentication(SalOp *op);
-#if 0
 belle_sip_header_contact_t* sal_op_create_contact(SalOp *op) ;
 #endif
 
@@ -171,30 +165,28 @@ void sal_op_presence_fill_cbs(SalOp*op);
 void sal_op_message_fill_cbs(SalOp*op);
 void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *event);
 void sal_op_subscribe_fill_cbs(SalOp*op);
-#endif
 
 /*call transfer*/
 void sal_op_process_refer(SalOp *op, const belle_sip_request_event_t *event, belle_sip_server_transaction_t *tr);
 void sal_op_call_process_notify(SalOp *op, const belle_sip_request_event_t *event, belle_sip_server_transaction_t *tr);
+#endif
 /*create SalAuthInfo by copying username and realm from suth event*/
 SalAuthInfo* sal_auth_info_create(belle_sip_auth_event_t* event) ;
 #if 0
 void sal_add_pending_auth(Sal *sal, SalOp *op);
 void sal_remove_pending_auth(Sal *sal, SalOp *op);
 void sal_add_presence_info(SalOp *op, belle_sip_message_t *notify, SalPresenceModel *presence);
-#endif
 
 belle_sip_response_t *sal_create_response_from_request(Sal *sal, belle_sip_request_t *req, int code);
 
-#if 0
 void sal_op_assign_recv_headers(SalOp *op, belle_sip_message_t *incoming);
 
 SalBodyHandler * sal_op_get_body_handler(SalOp *op, belle_sip_message_t *msg);
 
 int sal_reason_to_sip_code(SalReason r);
-#endif
 
 void _sal_op_add_custom_headers(SalOp *op, belle_sip_message_t *msg);
+#endif
 
 SalSubscribeStatus belle_sip_message_get_subscription_state(const belle_sip_message_t *msg);
 

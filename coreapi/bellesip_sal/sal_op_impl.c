@@ -256,7 +256,6 @@ void sal_op_set_replaces(SalOp* op,belle_sip_header_replaces_t* replaces) {
 	op->replaces=replaces;
 	belle_sip_object_ref(op->replaces);
 }
-#endif
 
 void sal_op_set_remote_ua(SalOp*op,belle_sip_message_t* message) {
 	belle_sip_header_user_agent_t* user_agent=belle_sip_message_get_header_by_type(message,belle_sip_header_user_agent_t);
@@ -269,7 +268,6 @@ void sal_op_set_remote_ua(SalOp*op,belle_sip_message_t* message) {
 	}
 }
 
-#if 0
 int sal_op_send_request_with_expires(SalOp* op, belle_sip_request_t* request,int expires) {
 	belle_sip_header_expires_t* expires_header=(belle_sip_header_expires_t*)belle_sip_message_get_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_EXPIRES);
 
@@ -285,7 +283,6 @@ void sal_op_resend_request(SalOp* op, belle_sip_request_t* request) {
 	belle_sip_header_cseq_set_seq_number(cseq,belle_sip_header_cseq_get_seq_number(cseq)+1);
 	sal_op_send_request(op,request);
 }
-#endif
 
 static void add_headers(SalOp *op, belle_sip_header_t *h, belle_sip_message_t *msg){
 
@@ -314,7 +311,6 @@ void _sal_op_add_custom_headers(SalOp *op, belle_sip_message_t *msg){
 	}
 }
 
-#if 0
 static int _sal_op_send_request_with_contact(SalOp* op, belle_sip_request_t* request, bool_t add_contact) {
 	belle_sip_client_transaction_t* client_transaction;
 	belle_sip_provider_t* prov=op->base.root->prov;
@@ -642,7 +638,6 @@ void sal_op_set_error_info_from_response(SalOp *op, belle_sip_response_t *respon
 	sal_error_info_set(ei,SalReasonUnknown,"SIP", code,reason_phrase,warnings);
 	sal_op_set_reason_error_info(op, BELLE_SIP_MESSAGE(response));
 }
-#endif
 
 const SalErrorInfo *sal_op_get_error_info(const SalOp *op){
 	return &op->error_info;
@@ -654,7 +649,6 @@ const SalErrorInfo * sal_op_get_reason_error_info(const SalOp *op){
 
 
 
-#if 0
 static void unlink_op_with_dialog(SalOp *op, belle_sip_dialog_t* dialog){
 	belle_sip_dialog_set_application_data(dialog,NULL);
 	sal_op_unref(op);
@@ -737,7 +731,6 @@ const char* sal_op_state_to_string(const SalOpState value) {
 		return "Unknown";
 	}
 }
-#endif
 
 /*
  * Warning: this function takes owneship of the custom headers
@@ -752,7 +745,6 @@ void sal_op_set_sent_custom_header(SalOp *op, SalCustomHeader* ch){
 	b->sent_custom_headers=ch;
 }
 
-#if 0
 void sal_op_assign_recv_headers(SalOp *op, belle_sip_message_t *incoming){
 	if (incoming) belle_sip_object_ref(incoming);
 	if (op->base.recv_custom_headers){
@@ -783,7 +775,6 @@ SalBodyHandler * sal_op_get_body_handler(SalOp *op, belle_sip_message_t *msg) {
 	}
 	return (SalBodyHandler *)body_handler;
 }
-#endif
 
 void sal_op_set_privacy(SalOp* op,SalPrivacyMask privacy) {
 	op->privacy=privacy;
@@ -799,7 +790,6 @@ bool_t sal_op_is_secure(const SalOp* op) {
 	return from && to && strcasecmp("sips",sal_address_get_scheme(from))==0 && strcasecmp("sips",sal_address_get_scheme(to))==0;
 }
 
-#if 0
 void sal_op_set_manual_refresher_mode(SalOp *op, bool_t enabled){
 	op->manual_refresher=enabled;
 }
@@ -858,7 +848,6 @@ void sal_call_set_sdp_handling(SalOp *h, SalOpSDPHandling handling)  {
 	if (handling != SalOpSDPNormal) ms_message("Enabling special SDP handling for SalOp[%p]!", h);
 	h->sdp_handling = handling;
 }
-#endif
 void sal_op_cnx_ip_to_0000_if_sendonly_enable(SalOp *op,bool_t yesno) {
 	op->cnx_ip_to_0000_if_sendonly_enabled = yesno;
 }
@@ -867,7 +856,6 @@ bool_t sal_op_cnx_ip_to_0000_if_sendonly_enabled(SalOp *op) {
 	return op->cnx_ip_to_0000_if_sendonly_enabled;
 }
 
-#if 0
 bool_t sal_op_is_forked_of(const SalOp *op1, const SalOp *op2){
 	return op1->base.call_id && op2->base.call_id && strcmp(op1->base.call_id, op2->base.call_id) == 0;
 }
@@ -890,7 +878,6 @@ void sal_op_set_event(SalOp *op, const char *eventname){
 	}
 	op->event = header;
 }
-#endif
 
 const char* sal_op_get_public_address(SalOp *op, int *port) {
 	if (op && op->refresher) {
@@ -906,7 +893,6 @@ const char* sal_op_get_local_address(SalOp *op, int *port) {
 	return NULL;
 }
 
-#if 0
 char* sal_op_get_dialog_id(const SalOp *op) {
 	if (op->dialog != NULL) {
 		return ms_strdup_printf("%s;to-tag=%s;from-tag=%s", ((SalOpBase*)op)->call_id,

@@ -3,15 +3,90 @@
 
 #include "sal/sal.h"
 
-// class SalCall;
-// class RegisterOp;
-// class MessageOp;
-// class SubscribeOp;
+class SalOp;
 
 class Sal{
 public:
+	typedef void (*OnCallReceivedCb)(SalOp *op);
+	typedef void (*OnCallRingingCb)(SalOp *op);
+	typedef void (*OnCallAcceptedCb)(SalOp *op);
+	typedef void (*OnCallAckReceivedCb)(SalOp *op, SalCustomHeader *ack);
+	typedef void (*OnCallAckBeingSentCb)(SalOp *op, SalCustomHeader *ack);
+	typedef void (*OnCallUpdatingCb)(SalOp *op, bool_t is_update);/*< Called when a reINVITE/UPDATE is received*/
+	typedef void (*OnCallTerminatedCb)(SalOp *op, const char *from);
+	typedef void (*OnCallFailureCb)(SalOp *op);
+	typedef void (*OnCallReleasedCb)(SalOp *salop);
+	typedef void (*OnCallCancelDoneCb)(SalOp *salop);
+	typedef void (*OnAuthRequestedLegacyCb)(SalOp *op, const char *realm, const char *username);
+	typedef bool_t (*OnAuthRequestedCb)(Sal *sal,SalAuthInfo* info);
+	typedef void (*OnAuthFailureCb)(SalOp *op, SalAuthInfo* info);
+	typedef void (*OnRegisterSuccessCb)(SalOp *op, bool_t registered);
+	typedef void (*OnRegisterFailureCb)(SalOp *op);
+	typedef void (*OnVfuRequestCb)(SalOp *op);
+	typedef void (*OnDtmfReceivedCb)(SalOp *op, char dtmf);
+	typedef void (*OnReferCb)(Sal *sal, SalOp *op, const char *referto);
+	typedef void (*OnMessageReceivedCb)(SalOp *op, const SalMessage *msg);
+	typedef void (*OnMessageDeliveryUpdateCb)(SalOp *op, SalMessageDeliveryStatus);
+	typedef void (*OnNotifyReferCb)(SalOp *op, SalReferStatus state);
+	typedef void (*OnSubscribeResponseCb)(SalOp *op, SalSubscribeStatus status, int will_retry);
+	typedef void (*OnNotifyCb)(SalOp *op, SalSubscribeStatus status, const char *event, SalBodyHandler *body);
+	typedef void (*OnSubscribeReceivedCb)(SalOp *salop, const char *event, const SalBodyHandler *body);
+	typedef void (*OnIncomingSubscribeClosedCb)(SalOp *salop);
+	typedef void (*OnParsePresenceRequestedCb)(SalOp *salop, const char *content_type, const char *content_subtype, const char *content, SalPresenceModel **result);
+	typedef void (*OnConvertPresenceToXMLRequestedCb)(SalOp *salop, SalPresenceModel *presence, const char *contact, char **content);
+	typedef void (*OnNotifyPresenceCb)(SalOp *op, SalSubscribeStatus ss, SalPresenceModel *model, const char *msg);
+	typedef void (*OnSubscribePresenceReceivedCb)(SalOp *salop, const char *from);
+	typedef void (*OnSubscribePresenceClosedCb)(SalOp *salop, const char *from);
+	typedef void (*OnPingReplyCb)(SalOp *salop);
+	typedef void (*OnInfoReceivedCb)(SalOp *salop, SalBodyHandler *body);
+	typedef void (*OnPublishResponseCb)(SalOp *salop);
+	typedef void (*OnNotifyResponseCb)(SalOp *salop);
+	typedef void (*OnExpireCb)(SalOp *salop);
+	
+	struct Callbacks {
+		OnCallReceivedCb call_received;
+		OnCallReceivedCb call_rejected;
+		OnCallRingingCb call_ringing;
+		OnCallAcceptedCb call_accepted;
+		OnCallAckReceivedCb call_ack_received;
+		OnCallAckBeingSentCb call_ack_being_sent;
+		OnCallUpdatingCb call_updating;
+		OnCallTerminatedCb call_terminated;
+		OnCallFailureCb call_failure;
+		OnCallReleasedCb call_released;
+		OnCallCancelDoneCb call_cancel_done;
+		OnAuthFailureCb auth_failure;
+		OnRegisterSuccessCb register_success;
+		OnRegisterFailureCb register_failure;
+		OnVfuRequestCb vfu_request;
+		OnDtmfReceivedCb dtmf_received;
+		OnReferCb refer_received;
+		OnMessageReceivedCb message_received;
+		OnMessageDeliveryUpdateCb message_delivery_update;
+		OnNotifyReferCb notify_refer;
+		OnSubscribeReceivedCb subscribe_received;
+		OnIncomingSubscribeClosedCb incoming_subscribe_closed;
+		OnSubscribeResponseCb subscribe_response;
+		OnNotifyCb notify;
+		OnSubscribePresenceReceivedCb subscribe_presence_received;
+		OnSubscribePresenceClosedCb subscribe_presence_closed;
+		OnParsePresenceRequestedCb parse_presence_requested;
+		OnConvertPresenceToXMLRequestedCb convert_presence_to_xml_requested;
+		OnNotifyPresenceCb notify_presence;
+		OnPingReplyCb ping_reply;
+		OnAuthRequestedCb auth_requested;
+		OnInfoReceivedCb info_received;
+		OnPublishResponseCb on_publish_response;
+		OnExpireCb on_expire;
+		OnNotifyResponseCb on_notify_response;
+	};
+	
+	Sal(MSFactory *factory);
 	~Sal();
-	void set_callbacks(const SalCallbacks *cbs);
+	void set_user_pointer(void *user_data) {this->up=user_data;}
+	void *get_user_pointer() const {return this->up;}
+	
+	void set_callbacks(const Callbacks *cbs);
 	int set_listen_port(const char *addr, int port, SalTransport tr, int is_tunneled);
 	int get_listening_port(SalTransport tr);
 	int sal_unlisten_ports();
@@ -53,6 +128,42 @@ public:
 	int sal_iterate() {belle_sip_stack_sleep(this->stack,0); return 0;}
 	bctbx_list_t *get_pending_auths() const {return bctbx_list_copy(this->pending_auths);}
 	void set_default_sdp_handling(SalOpSDPHandling sdp_handling_method);
+	void enable_nat_helper(bool_t enable);
+	void get_default_local_ip(int address_family, char *ip, size_t iplen);
+	belle_sip_resolver_context_t *resolve_a(const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data)
+		{return belle_sip_stack_resolve_a(this->stack,name,port,family,cb,data);}
+	belle_sip_resolver_context_t *resolve(const char *service, const char *transport, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data)
+		{return belle_sip_stack_resolve(this->stack, service, transport, name, port, family, cb, data);}
+	void  set_send_error(int value) {belle_sip_stack_set_send_error(this->stack,value);}
+	void  set_recv_error(int value) {belle_sip_provider_set_recv_error(this->prov,value);}
+	void enable_unconditional_answer(int value) {belle_sip_provider_enable_unconditional_answer(this->prov,value);}
+	bool_t pending_trans_checking_enabled() const {return this->pending_trans_checking;}
+	int enable_pending_trans_checking(bool_t value) {this->pending_trans_checking = value; return 0;}
+	void set_refresher_retry_after(int value) {this->refresher_retry_after=value;}
+	int get_refresher_retry_after() const {return this->refresher_retry_after;}
+	bool_t nat_helper_enabled() const {return this->_nat_helper_enabled;}
+	void set_dns_timeout(int timeout) {belle_sip_stack_set_dns_timeout(this->stack, timeout);}
+	int get_dns_timeout() const {return belle_sip_stack_get_dns_timeout(this->stack);}
+	void set_transport_timeout(int timeout) {belle_sip_stack_set_transport_timeout(this->stack, timeout);}
+	int get_transport_timeout() const {return belle_sip_stack_get_transport_timeout(this->stack);}
+	void set_dns_servers(const bctbx_list_t *servers);
+	void enable_dns_srv(bool_t enable) {belle_sip_stack_enable_dns_srv(this->stack, (unsigned char)enable);}
+	bool_t dns_srv_enabled() const {return (bool_t)belle_sip_stack_dns_srv_enabled(this->stack);}
+	void enable_dns_search(bool_t enable) {belle_sip_stack_enable_dns_search(this->stack, (unsigned char)enable);}
+	bool_t dns_search_enabled(this) const {return (bool_t)belle_sip_stack_dns_search_enabled(this->stack);}
+	void set_dns_user_hosts_file(const char *hosts_file) {belle_sip_stack_set_dns_user_hosts_file(this->stack, hosts_file);}
+	const char *get_dns_user_hosts_file() const {return belle_sip_stack_get_dns_user_hosts_file(this->stack);}
+	belle_sip_source_t *create_timer(belle_sip_source_func_t func, void *data, unsigned int timeout_value_ms, const char* timer_name);
+	void cancel_timer(belle_sip_source_t *timer);
+	void *get_stack_impl() {return this->stack;}
+	const char *get_public_address(int *port) {return this->refresher ? belle_sip_refresher_get_public_address(this->refresher, port) : NULL;}
+	const char *get_local_address(int *port) {return this->refresher ? belle_sip_refresher_get_local_address(this->refresher, port) : NULL;}
+	void enable_cnx_ip_to_0000_if_sendonly(bool_t yesno) {this->cnx_ip_to_0000_if_sendonly_enabled = yesno;}
+	bool_t cnx_ip_to_0000_if_sendonly_enabled() const {return this->cnx_ip_to_0000_if_sendonly_enabled;}
+	void set_http_proxy_host(const char *host) {belle_sip_stack_set_http_proxy_host(this->stack, host);}
+	void set_http_proxy_port(int port) {belle_sip_stack_set_http_proxy_port(this->stack, port);}
+	const char *get_http_proxy_host() const {return belle_sip_stack_get_http_proxy_host(this->stack);}
+	int get_http_proxy_port() const {return belle_sip_stack_get_http_proxy_port(this->stack);}
 	
 private:
 	struct sal_uuid_t {
@@ -69,11 +180,21 @@ private:
 	void make_supported_header();
 	void add_pending_auth(SalOp *op);
 	void remove_pending_auth(SalOp *op);
+	belle_sip_response_t* create_response_from_request (belle_sip_request_t* req, int code );
+	
 	static void unimplemented_stub() {ms_warning("Unimplemented SAL callback");}
 	static void remove_listening_point(belle_sip_listening_point_t* lp,belle_sip_provider_t* prov) {belle_sip_provider_remove_listening_point(prov,lp);}
 	
+	static void process_dialog_terminated_cb(void *sal, const belle_sip_dialog_terminated_event_t *event);
+	static void process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event);
+	static void process_request_event_cb(void *ud, const belle_sip_request_event_t *event);
+	static void process_response_event_cb(void *user_ctx, const belle_sip_response_event_t *event);
+	static void process_timeout_cb(void *user_ctx, const belle_sip_timeout_event_t *event);
+	static void process_transaction_terminated_cb(void *user_ctx, const belle_sip_transaction_terminated_event_t *event);
+	static void process_auth_requested_cb(void *sal, belle_sip_auth_event_t *event);
+	
 	MSFactory *factory = NULL;
-	SalCallbacks callbacks = {0};
+	Callbacks callbacks = {0};
 	MSList *pending_auths = NULL;/*MSList of SalOp */
 	belle_sip_stack_t* stack = NULL;
 	belle_sip_provider_t *prov = NULL;
@@ -86,21 +207,21 @@ private:
 	char *root_ca = NULL;
 	char *root_ca_data = NULL;
 	char *uuid = NULL;
-	int refresher_retry_after = 0; /*retry after value for refresher*/
+	int refresher_retry_after = 60000; /*retry after value for refresher*/
 	MSList *supported_tags = NULL;/*list of char * */
 	belle_sip_header_t *supported = NULL;
 	bool_t one_matching_codec = FALSE;
 	bool_t use_tcp_tls_keep_alive = FALSE;
-	bool_t nat_helper_enabled = FALSE;
-	bool_t tls_verify = FALSE;
-	bool_t tls_verify_cn = FALSE;
+	bool_t _nat_helper_enabled = FALSE;
+	bool_t tls_verify = TRUE;
+	bool_t tls_verify_cn = TRUE;
 	bool_t _use_dates = FALSE;
-	bool_t auto_contacts = FALSE;
+	bool_t auto_contacts = TRUE;
 	bool_t _enable_test_features = FALSE;
 	bool_t no_initial_route = FALSE;
-	bool_t enable_sip_update = FALSE; /*true by default*/
+	bool_t enable_sip_update = TRUE; /*true by default*/
 	SalOpSDPHandling default_sdp_handling = SalOpSDPNormal;
-	bool_t pending_trans_checking = FALSE; /*testing purpose*/
+	bool_t pending_trans_checking = TRUE; /*testing purpose*/
 	void *ssl_config = NULL;
 	bctbx_list_t *supported_content_types = NULL; /* list of char* */
 	
@@ -116,7 +237,7 @@ private:
 class SalOp {
 public:
 	SalOp(Sal *sal);
-	~SalOp();
+	virtual ~SalOp();
 	SalOp *ref();
 	void *unref();
 	void set_user_pointer(void *up) {this->user_pointer=up;}
@@ -138,6 +259,8 @@ public:
 	void set_manual_refresher_mode(bool_t enabled) {this->manual_refresher=enabled;}
 	void set_entity_tag(const char* entity_tag);
 	void set_event(const char *eventname);
+	void set_privacy(SalPrivacyMask privacy) {this->privacy=privacy;}
+	void set_sent_custom_header(SalCustomHeader* ch);
 	
 	const char *get_from() const {return this->from;}
 	const SalAddress *get_from_address() const {return this->from_address;}
@@ -156,6 +279,10 @@ public:
 	const SalAddress *get_service_route() const {return this->service_route;}
 	int get_address_family() const;
 	const char *get_entity_tag() const {return this->entity_tag;}
+	SalPrivacyMask get_privacy() const {return this->privacy;}
+	const SalErrorInfo *get_error_info() const {return &this->error_info;}
+	const SalErrorInfo *get_reason_error_info() const {return &this->reason_error_info;}
+	const SalCustomHeader *get_recv_custom_header() const {return this->recv_custom_headers;}
 	
 	bool_t is_forked_of(const SalOp *op2) const {return this->call_id && op2->call_id && strcmp(this->call_id, op2->call_id) == 0;}
 	bool_t is_idle() const ;
@@ -199,6 +326,9 @@ protected:
 		Subscribe
 	};
 	
+	static const char *to_string(const SalOp::Type type);
+	
+	virtual void fill_cbs() = 0;
 	void release_impl();
 	void process_authentication();
 	
@@ -215,6 +345,12 @@ protected:
 	void set_referred_by(belle_sip_header_referred_by_t* referred_by);
 	void set_replaces(belle_sip_header_replaces_t* replaces);
 	
+	void set_remote_contact(const char* remote_contact);
+	void set_network_origin(const char *origin);
+	void set_network_origin_address(SalAddress *origin);
+	void set_privacy_from_message(belle_sip_message_t* msg);
+	void set_remote_ua(belle_sip_message_t* message);
+	
 	belle_sip_response_t *create_response_from_request(belle_sip_request_t *req, int code) {return this->root->create_response_from_request(req,code);}
 	belle_sip_header_contact_t *create_contact();
 	
@@ -225,6 +361,10 @@ protected:
 	SalBodyHandler *get_body_handler(belle_sip_message_t *msg);
 	
 	void assign_recv_headers(belle_sip_message_t *incoming);
+	
+	bool_t is_secure() const;
+	void add_headers(belle_sip_header_t *h, belle_sip_message_t *msg);
+	void add_custom_headers(belle_sip_message_t *msg);
 	
 	static void assign_address(SalAddress** address, const char *value);
 	static void assign_string(char **str, const char *arg);

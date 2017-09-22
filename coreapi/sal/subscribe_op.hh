@@ -5,6 +5,8 @@
 
 class SubscribeOp: public SalOp {
 public:
+	SubscribeOp(Sal *sal): SalOp(sal) {}
+	
 	int subscribe(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler);
 	int unsubscribe();
 	int accept();
@@ -14,7 +16,7 @@ public:
 	int close_notify();
 
 private:
-	void fill_cbs();
+	virtual void fill_cbs() override;
 	void handle_notify(belle_sip_request_t *req, const char *eventname, SalBodyHandler* body_handler);
 	
 	static void subscribe_process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event);

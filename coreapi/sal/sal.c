@@ -757,7 +757,6 @@ void __sal_op_init(SalOp *b, Sal *sal){
 	memset(b,0,sizeof(SalOpBase));
 	((SalOpBase*)b)->root=sal;
 }
-#endif
 
 void __sal_op_set_network_origin(SalOp *op, const char *origin){
 	SET_PARAM(op,origin);
@@ -775,7 +774,6 @@ void __sal_op_set_network_origin_address(SalOp *op, SalAddress *origin){
 	ms_free(address_string);
 }
 
-#if 0
 void __sal_op_free(SalOp *op){
 	SalOpBase *b=(SalOpBase *)op;
 	if (b->from_address){

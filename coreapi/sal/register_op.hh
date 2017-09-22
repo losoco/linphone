@@ -7,9 +7,10 @@ class RegisterOp: public SalOp {
 public:
 	int register_(const char *proxy, const char *from, int expires, const SalAddress* old_contact);
 	int register_refresh(int expires) {return this->refresher ? belle_sip_refresher_refresh(this->refresher,expires) : -1;}
-	int unregister() {return sal_register_refresh(this,0);}
+	int unregister() {return register_refresh(0);}
 
 private:
+	virtual void fill_cbs() override {};
 	static void register_refresher_listener(belle_sip_refresher_t* refresher, void* user_pointer, unsigned int status_code, const char* reason_phrase, int will_retry);
 };
 

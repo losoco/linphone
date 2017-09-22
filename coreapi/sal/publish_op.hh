@@ -9,7 +9,7 @@ public:
 	int unpublish();
 
 private:
-	void fill_cbs();
+	virtual void fill_cbs() override;
 	
 	static void publish_response_event_cb(void *userctx, const belle_sip_response_event_t *event);
 	static void publish_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry);

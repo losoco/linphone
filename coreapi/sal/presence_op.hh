@@ -5,12 +5,14 @@
 
 class PresenceOp: public SalOp {
 public:
+	PresenceOp(Sal *sal): SalOp(sal) {}
+	
 	int subscribe(const char *from, const char *to, int expires);
 	int notify_presence(SalPresenceModel *presence);
 	int notify_presence_close();
 
 private:
-	void fill_cbs();
+	virtual void fill_cbs() override;
 	void handle_notify(belle_sip_request_t *req, belle_sip_dialog_t *dialog);
 	SalPresenceModel * process_presence_notification(belle_sip_request_t *req);
 	int check_dialog_state();
