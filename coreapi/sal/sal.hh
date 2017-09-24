@@ -6,6 +6,7 @@
 class SalOp;
 class SalCall;
 class MessageOp;
+class SubscribeOp;
 
 class Sal{
 public:
@@ -31,8 +32,8 @@ public:
 	typedef void (*OnMessageDeliveryUpdateCb)(SalOp *op, SalMessageDeliveryStatus);
 	typedef void (*OnNotifyReferCb)(SalOp *op, SalReferStatus state);
 	typedef void (*OnSubscribeResponseCb)(SalOp *op, SalSubscribeStatus status, int will_retry);
-	typedef void (*OnNotifyCb)(SalOp *op, SalSubscribeStatus status, const char *event, SalBodyHandler *body);
-	typedef void (*OnSubscribeReceivedCb)(SalOp *salop, const char *event, const SalBodyHandler *body);
+	typedef void (*OnNotifyCb)(SubscribeOp *op, SalSubscribeStatus status, const char *event, SalBodyHandler *body);
+	typedef void (*OnSubscribeReceivedCb)(SubscribeOp *salop, const char *event, const SalBodyHandler *body);
 	typedef void (*OnIncomingSubscribeClosedCb)(SalOp *salop);
 	typedef void (*OnParsePresenceRequestedCb)(SalOp *salop, const char *content_type, const char *content_subtype, const char *content, SalPresenceModel **result);
 	typedef void (*OnConvertPresenceToXMLRequestedCb)(SalOp *salop, SalPresenceModel *presence, const char *contact, char **content);
@@ -91,7 +92,7 @@ public:
 	void set_callbacks(const Callbacks *cbs);
 	int set_listen_port(const char *addr, int port, SalTransport tr, int is_tunneled);
 	int get_listening_port(SalTransport tr);
-	int sal_unlisten_ports();
+	int unlisten_ports();
 	int transport_available(SalTransport t);
 	bool_t content_encoding_available(const char *content_encoding) {return (bool_t)belle_sip_stack_content_encoding_available(this->stack, content_encoding);}
 	void set_dscp(int dscp) {belle_sip_stack_set_default_dscp(this->stack,dscp);}
@@ -126,8 +127,8 @@ public:
 	int create_uuid(char *uuid, size_t len);
 	static int generate_uuid(char *uuid, size_t len);
 	void enable_test_features(bool_t enabled) {this->_enable_test_features=enabled;}
-	void use_no_initial_routeb(bool_t enabled) {this->no_initial_route=enabled;}
-	int sal_iterate() {belle_sip_stack_sleep(this->stack,0); return 0;}
+	void use_no_initial_route(bool_t enabled) {this->no_initial_route=enabled;}
+	int iterate() {belle_sip_stack_sleep(this->stack,0); return 0;}
 	bctbx_list_t *get_pending_auths() const {return bctbx_list_copy(this->pending_auths);}
 	void set_default_sdp_handling(SalOpSDPHandling sdp_handling_method);
 	void enable_nat_helper(bool_t enable);
@@ -369,6 +370,7 @@ protected:
 	bool_t is_secure() const;
 	void add_headers(belle_sip_header_t *h, belle_sip_message_t *msg);
 	void add_custom_headers(belle_sip_message_t *msg);
+    int unsubscribe();
 	
 	static void assign_address(SalAddress** address, const char *value);
 	static void assign_string(char **str, const char *arg);

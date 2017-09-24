@@ -1,4 +1,4 @@
-#include "subscribe_op.hh"
+#include "event_op.hh"
 
 using namespace std;
 
@@ -39,7 +39,7 @@ void SubscribeOp::subscribe_response_event_cb(void *op_base, const belle_sip_res
 	}
 }
 
-void SubscribeOp::subscribe_process_timeout(void *user_ctx, const belle_sip_timeout_event_t *event) {
+void SubscribeOp::subscribe_process_timeout_cb(void *user_ctx, const belle_sip_timeout_event_t *event) {
 	SubscribeOp *op = (SubscribeOp*)user_ctx;
 	belle_sip_request_t * req;
 	const char *method;
@@ -67,7 +67,7 @@ void SubscribeOp::handle_notify(belle_sip_request_t *req, const char *eventname,
 	
 	if (!subscription_state_header || strcasecmp(BELLE_SIP_SUBSCRIPTION_STATE_TERMINATED,belle_sip_header_subscription_state_get_state(subscription_state_header)) ==0) {
 		sub_state=SalSubscribeTerminated;
-		ms_message("Outgoing subscription terminated by remote [%s]",sal_op_get_to(op));
+		ms_message("Outgoing subscription terminated by remote [%s]",get_to());
 	} else
 		sub_state=SalSubscribeActive;
 	ref();
@@ -250,7 +250,7 @@ int SubscribeOp::subscribe(const char *from, const char *to, const char *eventna
 		belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(this->event));
 		belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(belle_sip_header_expires_create(expires)));
 		belle_sip_message_set_body_handler(BELLE_SIP_MESSAGE(req), BELLE_SIP_BODY_HANDLER(body_handler));
-		return sal_op_send_and_create_refresher(op,req,expires,subscribe_refresher_listener_cb);
+		return send_and_create_refresher(req,expires,subscribe_refresher_listener_cb);
 	}else if (this->refresher){
 		const belle_sip_transaction_t *tr=(const belle_sip_transaction_t*) belle_sip_refresher_get_transaction(this->refresher);
 		belle_sip_request_t *last_req=belle_sip_transaction_get_request(tr);
@@ -259,17 +259,6 @@ int SubscribeOp::subscribe(const char *from, const char *to, const char *eventna
 		return belle_sip_refresher_refresh(this->refresher,expires);
 	}
 	ms_warning("sal_subscribe(): no dialog and no refresher ?");
-	return -1;
-}
-
-int SubscribeOp::unsubscribe() {
-	if (this->refresher){
-		const belle_sip_transaction_t *tr=(const belle_sip_transaction_t*) belle_sip_refresher_get_transaction(this->refresher);
-		belle_sip_request_t *last_req=belle_sip_transaction_get_request(tr);
-		belle_sip_message_set_body(BELLE_SIP_MESSAGE(last_req), NULL, 0);
-		belle_sip_refresher_refresh(this->refresher,0);
-		return 0;
-	}
 	return -1;
 }
 
@@ -303,7 +292,7 @@ int SubscribeOp::notify_pending_state() {
 		sub_state=belle_sip_header_subscription_state_new();
 		belle_sip_header_subscription_state_set_state(sub_state,BELLE_SIP_SUBSCRIPTION_STATE_PENDING);
 		belle_sip_message_add_header(BELLE_SIP_MESSAGE(notify), BELLE_SIP_HEADER(sub_state));
-		return sal_op_send_request(op,notify);
+		return send_request(notify);
 	} else {
 		ms_warning("NOTIFY with subscription state pending for op [%p] not implemented in this case (either dialog pending trans does not exist", this);
 	}
@@ -340,4 +329,93 @@ int SubscribeOp::close_notify() {
 	belle_sip_message_add_header(BELLE_SIP_MESSAGE(notify)
 		,BELLE_SIP_HEADER(belle_sip_header_subscription_state_create(BELLE_SIP_SUBSCRIPTION_STATE_TERMINATED,-1)));
 	return send_request(notify);
+}
+
+void PublishOp::publish_response_event_cb(void *userctx, const belle_sip_response_event_t *event) {
+	PublishOp *op=(PublishOp*)userctx;
+	op->set_error_info_from_response(belle_sip_response_event_get_response(event));
+	if (op->error_info.protocol_code>=200){
+		op->root->callbacks.on_publish_response(op);
+	}
+}
+
+void PublishOp::fill_cbs() {
+	static belle_sip_listener_callbacks_t op_publish_callbacks={0};
+	if (op_publish_callbacks.process_response_event==NULL){
+		op_publish_callbacks.process_response_event=publish_response_event_cb;
+	}
+	
+	this->callbacks=&op_publish_callbacks;
+	this->type=Type::Publish;
+}
+
+void PublishOp::publish_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry) {
+	PublishOp* op = (PublishOp*)user_pointer;
+	const belle_sip_client_transaction_t* last_publish_trans=belle_sip_refresher_get_transaction(op->refresher);
+	belle_sip_response_t *response=belle_sip_transaction_get_response(BELLE_SIP_TRANSACTION(last_publish_trans));
+	ms_message("Publish refresher  [%i] reason [%s] for proxy [%s]",status_code,reason_phrase?reason_phrase:"none",op->get_proxy());
+	if (status_code==0){
+		op->root->callbacks.on_expire(op);
+	}else if (status_code>=200){
+		belle_sip_header_t *sip_etag;
+		const char *sip_etag_string = NULL;
+		if (response && (sip_etag = belle_sip_message_get_header(BELLE_SIP_MESSAGE(response), "SIP-ETag"))) {
+			sip_etag_string = belle_sip_header_get_unparsed_value(sip_etag);
+		}
+		op->set_entity_tag(sip_etag_string);
+		sal_error_info_set(&op->error_info,SalReasonUnknown, "SIP", status_code,reason_phrase,NULL);
+		op->assign_recv_headers((belle_sip_message_t*)response);
+		op->root->callbacks.on_publish_response(op);
+	}
+}
+
+int PublishOp::publish(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler) {
+	belle_sip_request_t *req=NULL;
+	if(!this->refresher || !belle_sip_refresher_get_transaction(this->refresher)) {
+		if (from)
+			set_from(from);
+		if (to)
+			set_to(to);
+
+		fill_cbs();
+		req=build_request("PUBLISH");
+		if( req == NULL ){
+			return -1;
+		}
+		
+		if (get_entity_tag()) {
+			belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),belle_sip_header_create("SIP-If-Match", get_entity_tag()));
+		}
+		
+		if (get_contact_address()){
+			belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),BELLE_SIP_HEADER(create_contact()));
+		}
+		belle_sip_message_add_header(BELLE_SIP_MESSAGE(req),belle_sip_header_create("Event",eventname));
+		belle_sip_message_set_body_handler(BELLE_SIP_MESSAGE(req), BELLE_SIP_BODY_HANDLER(body_handler));
+		if (expires!=-1)
+			return send_and_create_refresher(req,expires,publish_refresher_listener_cb);
+		else return send_request(req);
+	} else {
+		/*update status*/
+		const belle_sip_client_transaction_t* last_publish_trans=belle_sip_refresher_get_transaction(this->refresher);
+		belle_sip_request_t* last_publish=belle_sip_transaction_get_request(BELLE_SIP_TRANSACTION(last_publish_trans));
+		/*update body*/
+		if (expires == 0) {
+			belle_sip_message_set_body(BELLE_SIP_MESSAGE(last_publish), NULL, 0);
+		} else {
+			belle_sip_message_set_body_handler(BELLE_SIP_MESSAGE(last_publish), BELLE_SIP_BODY_HANDLER(body_handler));
+		}
+		return belle_sip_refresher_refresh(this->refresher,expires==-1 ? BELLE_SIP_REFRESHER_REUSE_EXPIRES : expires);
+	}
+}
+
+int PublishOp::unpublish() {
+	if (this->refresher){
+		const belle_sip_transaction_t *tr=(const belle_sip_transaction_t*) belle_sip_refresher_get_transaction(this->refresher);
+		belle_sip_request_t *last_req=belle_sip_transaction_get_request(tr);
+		belle_sip_message_set_body(BELLE_SIP_MESSAGE(last_req), NULL, 0);
+		belle_sip_refresher_refresh(this->refresher,0);
+		return 0;
+	}
+	return -1;
 }

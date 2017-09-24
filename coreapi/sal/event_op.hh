@@ -1,14 +1,19 @@
-#ifndef _LINPHONE_SAL_SUBSCRIBE_OP
-#define _LINPHONE_SAL_SUBSCRIBE_OP
+#ifndef _LINPHONE_SAL_EVENT_OP_HH
+#define _LINPHONE_SAL_EVENT_OP_HH
 
 #include "sal.hh"
 
-class SubscribeOp: public SalOp {
+class EventOp: public SalOp {
 public:
-	SubscribeOp(Sal *sal): SalOp(sal) {}
+    EventOp(Sal *sal): SalOp(sal) {}
+};
+
+class SubscribeOp: public EventOp {
+public:
+	SubscribeOp(Sal *sal): EventOp(sal) {}
 	
 	int subscribe(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler);
-	int unsubscribe();
+	int unsubscribe() {return SalOp::unsubscribe();}
 	int accept();
 	int decline(SalReason reason);
 	int notify_pending_state();
@@ -29,4 +34,18 @@ private:
 	static void subscribe_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry);
 };
 
-#endif // _LINPHONE_SAL_SUBSCRIBE_OP
+class PublishOp: public EventOp {
+public:
+    PublishOp(Sal *sal): EventOp(sal) {}
+    
+	int publish(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler);
+	int unpublish();
+
+private:
+	virtual void fill_cbs() override;
+	
+	static void publish_response_event_cb(void *userctx, const belle_sip_response_event_t *event);
+	static void publish_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry);
+};
+
+#endif

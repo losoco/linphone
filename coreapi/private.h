@@ -33,7 +33,11 @@
 #include "linphone/conference.h"
 #include "sal/sal.h"
 #include "sal/sal.hh"
+#include "sal/sal_call.hh"
+#include "sal/event_op.hh"
 #include "sal/message_op.hh"
+#include "sal/presence_op.hh"
+#include "sal/register_op.hh"
 #include "linphone/sipsetup.h"
 #include "quality_reporting.h"
 #include "linphone/ringtoneplayer.h"
@@ -286,7 +290,7 @@ void linphone_call_refresh_sockets(LinphoneCall *call);
 void linphone_call_replace_op(LinphoneCall *call, SalOp *op);
 void linphone_call_reinvite_to_recover_from_connection_loss(LinphoneCall *call);
 
-SalOp * linphone_call_get_op(const LinphoneCall *call);
+SalCall *linphone_call_get_op(const LinphoneCall *call);
 LinphoneProxyConfig * linphone_call_get_dest_proxy(const LinphoneCall *call);
 MediaStream * linphone_call_get_stream(LinphoneCall *call, LinphoneStreamType type);
 LinphoneCallLog * linphone_call_get_log(const LinphoneCall *call);
@@ -542,7 +546,7 @@ struct _LinphoneProxyConfig
 	char *contact_uri_params;
 	int expires;
 	int publish_expires;
-	SalOp *op;
+	RegisterOp *op;
 	SalCustomHeader *sent_headers;
 	char *type;
 	struct _SipSetupContext *ssctx;
@@ -625,7 +629,7 @@ struct _LinphoneFriend{
 	void *user_data;
 	LinphoneAddress *uri;
 	MSList *insubs; /*list of SalOp. There can be multiple instances of a same Friend that subscribe to our presence*/
-	SalOp *outsub;
+	PresenceOp *outsub;
 	LinphoneSubscribePolicy pol;
 	MSList *presence_models; /* list of LinphoneFriendPresence. It associates SIP URIs and phone numbers with their respective presence models. */
 	MSList *phone_number_sip_uri_map; /* list of LinphoneFriendPhoneNumberSipUri. It associates phone numbers with their corresponding SIP URIs. */
@@ -999,7 +1003,7 @@ struct _LinphoneEvent{
 	LinphoneErrorInfo *ei;
 	LinphoneSubscriptionDir dir;
 	LinphoneCore *lc;
-	SalOp *op;
+	EventOp *op;
 	SalCustomHeader *send_custom_headers;
 	LinphoneSubscriptionState subscription_state;
 	LinphonePublishState publish_state;
@@ -1155,12 +1159,12 @@ SalReason linphone_reason_to_sal(LinphoneReason reason);
 LinphoneReason linphone_reason_from_sal(SalReason reason);
 void linphone_error_info_to_sal(const LinphoneErrorInfo* ei, SalErrorInfo* sei);
 LinphoneEvent *linphone_event_new(LinphoneCore *lc, LinphoneSubscriptionDir dir, const char *name, int expires);
-LinphoneEvent *linphone_event_new_with_op(LinphoneCore *lc, SalOp *op, LinphoneSubscriptionDir dir, const char *name);
+LinphoneEvent *linphone_event_new_with_op(LinphoneCore *lc, EventOp *op, LinphoneSubscriptionDir dir, const char *name);
 void linphone_event_unpublish(LinphoneEvent *lev);
 /**
  * Useful for out of dialog notify
  * */
-LinphoneEvent *linphone_event_new_with_out_of_dialog_op(LinphoneCore *lc, SalOp *op, LinphoneSubscriptionDir dir, const char *name);
+LinphoneEvent *linphone_event_new_with_out_of_dialog_op(LinphoneCore *lc, EventOp *op, LinphoneSubscriptionDir dir, const char *name);
 void linphone_event_set_internal(LinphoneEvent *lev, bool_t internal);
 bool_t linphone_event_is_internal(LinphoneEvent *lev);
 void linphone_event_set_state(LinphoneEvent *lev, LinphoneSubscriptionState state);

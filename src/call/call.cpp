@@ -67,7 +67,7 @@ MediaStream * CallPrivate::getMediaStream (LinphoneStreamType type) const {
 	return static_cast<MediaSession *>(getActiveSession().get())->getPrivate()->getMediaStream(type);
 }
 
-SalOp * CallPrivate::getOp () const {
+SalCall * CallPrivate::getOp () const {
 	return getActiveSession()->getPrivate()->getOp();
 }
 

@@ -43,7 +43,7 @@ public:
 	void setPingTime (int value) { pingTime = value; }
 
 	LinphoneProxyConfig * getDestProxy () const { return destProxy; }
-	SalOp * getOp () const { return op; }
+	SalCall * getOp () const { return op; }
 
 	virtual void abort (const std::string &errorMsg);
 	virtual void accepted ();

@@ -806,7 +806,7 @@ LinphoneFriend * linphone_friend_list_find_friend_by_out_subscribe(const Linphon
 	const bctbx_list_t *elem;
 	for (elem = list->friends; elem != NULL; elem = bctbx_list_next(elem)) {
 		LinphoneFriend *lf = (LinphoneFriend *)bctbx_list_get_data(elem);
-		if (lf->outsub && ((lf->outsub == op) || sal_op_is_forked_of(lf->outsub, op))) return lf;
+		if (lf->outsub && ((lf->outsub == op) || lf->outsub->is_forked_of(op))) return lf;
 	}
 	return NULL;
 }

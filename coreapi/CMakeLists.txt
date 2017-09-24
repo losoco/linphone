@@ -109,14 +109,13 @@ set(LINPHONE_SOURCE_FILES_C
 	quality_reporting.c
 	remote_provisioning.c
 	ringtoneplayer.c
+	sal/event_op.cc
 	sal/message_op.cc
 	sal/presence_op.cc
-	sal/publish_op.cc
 	sal/register_op.cc
 	sal/sal.c
 	sal/sal_call.cc
 	sal/sal.cc
-	sal/subscribe_op.cc
 	siplogin.c
 	sipsetup.c
 	sqlite3_bctbx_vfs.c

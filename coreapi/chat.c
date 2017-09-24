@@ -870,7 +870,7 @@ void linphone_chat_message_destroy(LinphoneChatMessage *msg) {
 
 static void _linphone_chat_message_destroy(LinphoneChatMessage *msg) {
 	if (msg->op)
-		sal_op_release(msg->op);
+		msg->op->release();
 	if (msg->ei)
 		linphone_error_info_unref(msg->ei);
 	if (msg->message)

@@ -490,7 +490,7 @@ int Sal::get_listening_port(SalTransport tr){
 	return 0;
 }
 
-int Sal::sal_unlisten_ports(){
+int Sal::unlisten_ports(){
 	const belle_sip_list_t * lps = belle_sip_provider_get_listening_points(this->prov);
 	belle_sip_list_t * tmp_list = belle_sip_list_copy(lps);
 	belle_sip_list_for_each2 (tmp_list,(void (*)(void*,void*))remove_listening_point,this->prov);
@@ -1712,6 +1712,17 @@ void SalOp::add_custom_headers(belle_sip_message_t *msg){
 		}
 		belle_sip_list_free(l);
 	}
+}
+
+int SalOp::unsubscribe(){
+	if (this->refresher){
+		const belle_sip_transaction_t *tr=(const belle_sip_transaction_t*) belle_sip_refresher_get_transaction(this->refresher);
+		belle_sip_request_t *last_req=belle_sip_transaction_get_request(tr);
+		belle_sip_message_set_body(BELLE_SIP_MESSAGE(last_req), NULL, 0);
+		belle_sip_refresher_refresh(this->refresher,0);
+		return 0;
+	}
+	return -1;
 }
 
 int to_sip_code(SalReason r) {

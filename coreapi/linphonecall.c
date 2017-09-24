@@ -68,7 +68,7 @@ struct _LinphoneCall{
 	SalMediaDescription *localdesc;
 	SalMediaDescription *resultdesc;
 	struct _LinphoneCallLog *log;
-	SalOp *op;
+	SalCall *op;
 	SalOp *ping_op;
 	LinphoneCallState transfer_state; /*idle if no transfer*/
 	struct _AudioStream *audiostream;  /**/
@@ -293,7 +293,7 @@ LinphoneCall * linphone_call_new_outgoing(LinphoneCore *lc, const LinphoneAddres
 	return call;
 }
 
-LinphoneCall * linphone_call_new_incoming(LinphoneCore *lc, const LinphoneAddress *from, const LinphoneAddress *to, SalOp *op) {
+LinphoneCall * linphone_call_new_incoming(LinphoneCore *lc, const LinphoneAddress *from, const LinphoneAddress *to, SalCall *op) {
 	LinphoneCall *call = belle_sip_object_new(LinphoneCall);
 	call->currentParamsCache = linphone_call_params_new_for_wrapper();
 	call->paramsCache = linphone_call_params_new_for_wrapper();
@@ -394,7 +394,7 @@ static void linphone_call_destroy(LinphoneCall *obj) {
 		obj->text_stats = NULL;
 	}
 	if (obj->op!=NULL) {
-		sal_op_release(obj->op);
+		obj->op->release();
 		obj->op=NULL;
 	}
 	if (obj->resultdesc!=NULL) {
@@ -406,7 +406,7 @@ static void linphone_call_destroy(LinphoneCall *obj) {
 		obj->localdesc=NULL;
 	}
 	if (obj->ping_op) {
-		sal_op_release(obj->ping_op);
+		obj->ping_op->release();
 		obj->ping_op=NULL;
 	}
 	if (obj->refer_to){
@@ -1608,7 +1608,7 @@ void linphone_call_notify_ack_processing(LinphoneCall *call, LinphoneHeaders *ms
 	NOTIFY_IF_EXIST(ack_processing, call, msg, is_received)
 }
 
-SalOp * linphone_call_get_op(const LinphoneCall *call) {
+SalCall *linphone_call_get_op(const LinphoneCall *call) {
 	return L_GET_PRIVATE(linphone_call_get_cpp_obj(call).get())->getOp();
 }
 

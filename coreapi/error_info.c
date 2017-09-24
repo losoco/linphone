@@ -205,9 +205,9 @@ void linphone_error_info_from_sal_op(LinphoneErrorInfo *ei, const SalOp *op){
 	}else{
 		const SalErrorInfo *sei;
 		linphone_error_info_reset(ei);
-		sei = sal_op_get_error_info(op);
+		sei = op->get_error_info();
 		linphone_error_info_from_sal(ei, sei);
-		sei = sal_op_get_reason_error_info(op);
+		sei = op->get_reason_error_info();
 		linphone_error_info_from_sal_reason_ei(ei, sei);
 	}
 }

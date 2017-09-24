@@ -54,7 +54,7 @@ public:
 	LinphoneProxyConfig * getDestProxy () const;
 	IceSession * getIceSession () const;
 	MediaStream * getMediaStream (LinphoneStreamType type) const;
-	SalOp * getOp () const;
+	SalCall * getOp () const;
 	void setAudioMuted (bool value);
 
 	void ackBeingSent (LinphoneHeaders *headers);

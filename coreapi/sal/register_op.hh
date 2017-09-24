@@ -5,6 +5,7 @@
 
 class RegisterOp: public SalOp {
 public:
+    RegisterOp(Sal *sal): SalOp(sal) {}
 	int register_(const char *proxy, const char *from, int expires, const SalAddress* old_contact);
 	int register_refresh(int expires) {return this->refresher ? belle_sip_refresher_refresh(this->refresher,expires) : -1;}
 	int unregister() {return register_refresh(0);}

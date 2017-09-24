@@ -8,6 +8,7 @@ public:
 	PresenceOp(Sal *sal): SalOp(sal) {}
 	
 	int subscribe(const char *from, const char *to, int expires);
+    int unsubscribe() {return SalOp::unsubscribe();}
 	int notify_presence(SalPresenceModel *presence);
 	int notify_presence_close();
 

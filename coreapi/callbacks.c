@@ -638,7 +638,7 @@ static void subscribe_response(SalOp *op, SalSubscribeStatus status, int will_re
 	}
 }
 
-static void notify(SalOp *op, SalSubscribeStatus st, const char *eventname, SalBodyHandler *body_handler){
+static void notify(SubscribeOp *op, SalSubscribeStatus st, const char *eventname, SalBodyHandler *body_handler){
 	LinphoneEvent *lev=(LinphoneEvent*)op->get_user_pointer();
 	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 	bool_t out_of_dialog = (lev==NULL);
@@ -661,7 +661,7 @@ static void notify(SalOp *op, SalSubscribeStatus st, const char *eventname, SalB
 	}
 }
 
-static void subscribe_received(SalOp *op, const char *eventname, const SalBodyHandler *body_handler){
+static void subscribe_received(SubscribeOp *op, const char *eventname, const SalBodyHandler *body_handler){
 	LinphoneEvent *lev=(LinphoneEvent*)op->get_user_pointer();
 	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 
