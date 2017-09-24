@@ -4,15 +4,17 @@
 #include "sal/sal.h"
 
 class SalOp;
+class SalCall;
+class MessageOp;
 
 class Sal{
 public:
-	typedef void (*OnCallReceivedCb)(SalOp *op);
+	typedef void (*OnCallReceivedCb)(SalCall *op);
 	typedef void (*OnCallRingingCb)(SalOp *op);
 	typedef void (*OnCallAcceptedCb)(SalOp *op);
 	typedef void (*OnCallAckReceivedCb)(SalOp *op, SalCustomHeader *ack);
 	typedef void (*OnCallAckBeingSentCb)(SalOp *op, SalCustomHeader *ack);
-	typedef void (*OnCallUpdatingCb)(SalOp *op, bool_t is_update);/*< Called when a reINVITE/UPDATE is received*/
+	typedef void (*OnCallUpdatingCb)(SalOp *op, bool_t is_update);/* Called when a reINVITE/UPDATE is received*/
 	typedef void (*OnCallTerminatedCb)(SalOp *op, const char *from);
 	typedef void (*OnCallFailureCb)(SalOp *op);
 	typedef void (*OnCallReleasedCb)(SalOp *salop);
@@ -25,7 +27,7 @@ public:
 	typedef void (*OnVfuRequestCb)(SalOp *op);
 	typedef void (*OnDtmfReceivedCb)(SalOp *op, char dtmf);
 	typedef void (*OnReferCb)(Sal *sal, SalOp *op, const char *referto);
-	typedef void (*OnMessageReceivedCb)(SalOp *op, const SalMessage *msg);
+	typedef void (*OnMessageReceivedCb)(MessageOp *op, const SalMessage *msg);
 	typedef void (*OnMessageDeliveryUpdateCb)(SalOp *op, SalMessageDeliveryStatus);
 	typedef void (*OnNotifyReferCb)(SalOp *op, SalReferStatus state);
 	typedef void (*OnSubscribeResponseCb)(SalOp *op, SalSubscribeStatus status, int will_retry);
