@@ -706,13 +706,11 @@ void sal_op_set_diversion_address(SalOp *op, const SalAddress *diversion){
 void sal_op_set_user_pointer(SalOp *op, void *up){
 	((SalOpBase*)op)->user_pointer=up;
 }
-#endif
 
 Sal *sal_op_get_sal(const SalOp *op){
 	return ((SalOpBase*)op)->root;
 }
 
-#if 0
 const char *sal_op_get_from(const SalOp *op){
 	return ((SalOpBase*)op)->from;
 }

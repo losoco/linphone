@@ -430,14 +430,15 @@ static void refer_received(Sal *sal, SalOp *op, const char *referto){
 #endif
 }
 
-static void message_received(MessageOp *op, const SalMessage *msg){
+static void message_received(SalOp *op, const SalMessage *msg){
 	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 	LinphoneCall *call=(LinphoneCall*)op->get_user_pointer();
 	LinphoneReason reason = lc->chat_deny_code;
 	if (reason == LinphoneReasonNone) {
 		linphone_core_message_received(lc, op, msg);
 	}
-	op->reply(linphone_reason_to_sal(reason));
+	auto messageOp = dynamic_cast<MessageOp *>(op);
+	messageOp->reply(linphone_reason_to_sal(reason));
 	if (!call) op->release();
 }
 

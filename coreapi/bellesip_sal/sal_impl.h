@@ -186,9 +186,9 @@ SalBodyHandler * sal_op_get_body_handler(SalOp *op, belle_sip_message_t *msg);
 int sal_reason_to_sip_code(SalReason r);
 
 void _sal_op_add_custom_headers(SalOp *op, belle_sip_message_t *msg);
-#endif
 
 SalSubscribeStatus belle_sip_message_get_subscription_state(const belle_sip_message_t *msg);
+#endif
 
 
 #endif /* SAL_IMPL_H_ */

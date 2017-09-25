@@ -28,7 +28,7 @@ public:
 	typedef void (*OnVfuRequestCb)(SalOp *op);
 	typedef void (*OnDtmfReceivedCb)(SalOp *op, char dtmf);
 	typedef void (*OnReferCb)(Sal *sal, SalOp *op, const char *referto);
-	typedef void (*OnMessageReceivedCb)(MessageOp *op, const SalMessage *msg);
+	typedef void (*OnMessageReceivedCb)(SalOp *op, const SalMessage *msg);
 	typedef void (*OnMessageDeliveryUpdateCb)(SalOp *op, SalMessageDeliveryStatus);
 	typedef void (*OnNotifyReferCb)(SalOp *op, SalReferStatus state);
 	typedef void (*OnSubscribeResponseCb)(SalOp *op, SalSubscribeStatus status, int will_retry);
@@ -242,7 +242,6 @@ public:
 	void set_user_pointer(void *up) {this->user_pointer=up;}
 	void *get_user_pointer() const {return this->user_pointer;}
 	
-	Sal *get_sal() const {return this->root;}
 	void set_contact_address(const SalAddress* address);
 	void set_and_clean_contact_address(SalAddress* address);
 	void set_route(const char *route);
@@ -282,6 +281,7 @@ public:
 	const SalErrorInfo *get_error_info() const {return &this->error_info;}
 	const SalErrorInfo *get_reason_error_info() const {return &this->reason_error_info;}
 	const SalCustomHeader *get_recv_custom_header() const {return this->recv_custom_headers;}
+	Sal *get_sal() const {return this->root;}
 	
 	bool_t is_forked_of(const SalOp *op2) const {return this->call_id && op2->call_id && strcmp(this->call_id, op2->call_id) == 0;}
 	bool_t is_idle() const ;
@@ -333,6 +333,8 @@ protected:
 	
 	static const char *to_string(const SalOp::Type type);
 	
+	typedef void (*ReleaseCb)(SalOp *op);
+	
 	virtual void fill_cbs() {};
 	void release_impl();
 	void process_authentication();
@@ -372,6 +374,11 @@ protected:
 	void add_custom_headers(belle_sip_message_t *msg);
     int unsubscribe();
 	
+	void process_incoming_message(const belle_sip_request_event_t *event);
+	int reply_message(SalReason reason);
+	void add_message_accept(belle_sip_message_t *msg);
+	static bool_t is_external_body(belle_sip_header_content_type_t* content_type);
+	
 	static void assign_address(SalAddress** address, const char *value);
 	static void assign_string(char **str, const char *arg);
 	static void add_initial_route_set(belle_sip_request_t *request, const MSList *list);
@@ -401,7 +408,7 @@ protected:
 	SalCustomHeader *sent_custom_headers = NULL;
 	SalCustomHeader *recv_custom_headers = NULL;
 	char* entity_tag = NULL; /*as defined by rfc3903 (I.E publih)*/
-	SalOpReleaseCb release_cb = NULL;
+	ReleaseCb release_cb = NULL;
 	
 	// BelleSip implementation
 	const belle_sip_listener_callbacks_t *callbacks = NULL;

@@ -1,7 +1,7 @@
 #include "sal.hh"
 #include "sal_call.hh"
 #include "presence_op.hh"
-#include "subscribe_op.hh"
+#include "event_op.hh"
 #include "message_op.hh"
 #include "bellesip_sal/sal_impl.h"
 
@@ -186,7 +186,7 @@ void Sal::process_request_event_cb(void *ud, const belle_sip_request_event_t *ev
 		belle_sip_object_unref(origin_address);
 	}
 	if (!op->remote_ua) {
-		sal_op_set_remote_ua(op,BELLE_SIP_MESSAGE(req));
+		op->set_remote_ua(BELLE_SIP_MESSAGE(req));
 	}
 
 	if (!op->call_id) {
@@ -223,7 +223,7 @@ void Sal::process_response_event_cb(void *user_ctx, const belle_sip_response_eve
 			return;
 		}
 		/*do it all the time, since we can receive provisional responses from a different instance than the final one*/
-		sal_op_set_remote_ua(op,BELLE_SIP_MESSAGE(response));
+		op->set_remote_ua(BELLE_SIP_MESSAGE(response));
 
 		if(remote_contact) {
 			op->set_remote_contact(belle_sip_header_get_unparsed_value(BELLE_SIP_HEADER(remote_contact)));
@@ -257,7 +257,7 @@ void Sal::process_response_event_cb(void *user_ctx, const belle_sip_response_eve
 							op->root->remove_pending_auth(op);
 						} else {
 							op->pending_auth_transaction=(belle_sip_client_transaction_t*)belle_sip_object_ref(client_transaction);
-							sal_process_authentication(op);
+							op->process_authentication();
 							return;
 						}
 					}
@@ -685,7 +685,7 @@ void Sal::set_uuid(const char *uuid){
 }
 
 int Sal::create_uuid(char *uuid, size_t len) {
-	if (sal_generate_uuid(uuid, len) == 0) {
+	if (generate_uuid(uuid, len) == 0) {
 		set_uuid(uuid);
 		return 0;
 	}
@@ -740,7 +740,7 @@ void Sal::set_default_sdp_handling(SalOpSDPHandling sdp_handling_method)  {
 }
 
 void Sal::enable_nat_helper(bool_t enable) {
-	this->nat_helper_enabled=enable;
+	this->_nat_helper_enabled=enable;
 	belle_sip_provider_enable_nat_helper(this->prov,enable);
 	ms_message("Sal nat helper [%s]",enable?"enabled":"disabled");
 }
@@ -998,7 +998,7 @@ int SalOp::refresh() {
 		belle_sip_refresher_refresh(this->refresher,belle_sip_refresher_get_expires(this->refresher));
 		return 0;
 	}
-	ms_warning("sal_refresh on op [%p] of type [%s] no refresher",op,sal_op_type_to_string(this->type));
+	ms_warning("sal_refresh on op [%p] of type [%s] no refresher",this,to_string(this->type));
 	return -1;
 }
 
@@ -1022,7 +1022,7 @@ void SalOp::release() {
 }
 
 void SalOp::release_impl(){
-	ms_message("Destroying op [%p] of type [%s]",this,sal_op_type_to_string(this->type));
+	ms_message("Destroying op [%p] of type [%s]",this,to_string(this->type));
 	if (this->pending_auth_transaction) belle_sip_object_unref(this->pending_auth_transaction);
 	this->root->remove_pending_auth(this);
 	if (this->auth_info) {
@@ -1118,12 +1118,12 @@ int SalOp::send_request_with_contact(belle_sip_request_t* request, bool_t add_co
 	belle_sip_object_ref(this->pending_client_trans);
 
 	if (belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(request),belle_sip_header_user_agent_t)==NULL)
-		belle_sip_message_add_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_HEADER(op->base.root->user_agent));
+		belle_sip_message_add_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_HEADER(this->root->user_agent));
 
 	if (!belle_sip_message_get_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_AUTHORIZATION)
 		&& !belle_sip_message_get_header(BELLE_SIP_MESSAGE(request),BELLE_SIP_PROXY_AUTHORIZATION)) {
 		/*hmm just in case we already have authentication param in cache*/
-		belle_sip_provider_add_authorization(op->base.root->prov,request,NULL,NULL,NULL,op->base.realm);
+		belle_sip_provider_add_authorization(this->root->prov,request,NULL,NULL,NULL,this->realm);
 	}
 	result = belle_sip_client_transaction_send_request_to(client_transaction,next_hop_uri/*might be null*/);
 
@@ -1358,7 +1358,7 @@ belle_sip_request_t* SalOp::build_request(const char* method) {
 	/*make sure to preserve components like headers or port*/
 
 	req_uri = (belle_sip_uri_t*)belle_sip_object_clone((belle_sip_object_t*)to_uri);
-	belle_sip_uri_set_secure(req_uri,sal_op_is_secure(this));
+	belle_sip_uri_set_secure(req_uri,is_secure());
 
 	to_header = belle_sip_header_to_create(BELLE_SIP_HEADER_ADDRESS(to_address),NULL);
 	call_id_header = belle_sip_provider_create_call_id(prov);
@@ -1510,7 +1510,7 @@ belle_sip_header_contact_t *SalOp::create_contact() {
 	}
 
 	belle_sip_uri_set_user_password(contact_uri,NULL);
-	belle_sip_uri_set_secure(contact_uri,sal_op_is_secure(this));
+	belle_sip_uri_set_secure(contact_uri,is_secure());
 	if (this->privacy!=SalPrivacyNone){
 		belle_sip_uri_set_user(contact_uri,NULL);
 	}
@@ -1723,6 +1723,99 @@ int SalOp::unsubscribe(){
 		return 0;
 	}
 	return -1;
+}
+
+void SalOp::process_incoming_message(const belle_sip_request_event_t *event) {
+	belle_sip_request_t* req = belle_sip_request_event_get_request(event);
+	belle_sip_server_transaction_t* server_transaction = belle_sip_provider_create_server_transaction(this->root->prov,req);
+	belle_sip_header_address_t* address;
+	belle_sip_header_from_t* from_header;
+	belle_sip_header_content_type_t* content_type;
+	belle_sip_response_t* resp;
+	int errcode = 500;
+	belle_sip_header_call_id_t* call_id = belle_sip_message_get_header_by_type(req,belle_sip_header_call_id_t);
+	belle_sip_header_cseq_t* cseq = belle_sip_message_get_header_by_type(req,belle_sip_header_cseq_t);
+	belle_sip_header_date_t *date=belle_sip_message_get_header_by_type(req,belle_sip_header_date_t);
+	char* from;
+	bool_t external_body=FALSE;
+
+	from_header=belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(req),belle_sip_header_from_t);
+	content_type=belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(req),belle_sip_header_content_type_t);
+	
+	if (content_type) {
+		SalMessage salmsg;
+		char message_id[256]={0};
+
+		if (this->pending_server_trans) belle_sip_object_unref(this->pending_server_trans);
+		
+		this->pending_server_trans=server_transaction;
+		belle_sip_object_ref(this->pending_server_trans);
+
+		external_body=is_external_body(content_type);
+		address=belle_sip_header_address_create(belle_sip_header_address_get_displayname(BELLE_SIP_HEADER_ADDRESS(from_header))
+				,belle_sip_header_address_get_uri(BELLE_SIP_HEADER_ADDRESS(from_header)));
+		from=belle_sip_object_to_string(BELLE_SIP_OBJECT(address));
+		snprintf(message_id,sizeof(message_id)-1,"%s%i"
+				,belle_sip_header_call_id_get_call_id(call_id)
+				,belle_sip_header_cseq_get_seq_number(cseq));
+		salmsg.from=from;
+		/* if we just deciphered a message, use the deciphered part(which can be a rcs xml body pointing to the file to retreive from server)*/
+		salmsg.text=(!external_body)?belle_sip_message_get_body(BELLE_SIP_MESSAGE(req)):NULL;
+		salmsg.url=NULL;
+		salmsg.content_type = ms_strdup_printf("%s/%s", belle_sip_header_content_type_get_type(content_type), belle_sip_header_content_type_get_subtype(content_type));
+		if (external_body && belle_sip_parameters_get_parameter(BELLE_SIP_PARAMETERS(content_type),"URL")) {
+			size_t url_length=strlen(belle_sip_parameters_get_parameter(BELLE_SIP_PARAMETERS(content_type),"URL"));
+			salmsg.url = ms_strdup(belle_sip_parameters_get_parameter(BELLE_SIP_PARAMETERS(content_type),"URL")+1); /* skip first "*/
+			((char*)salmsg.url)[url_length-2]='\0'; /*remove trailing "*/
+		}
+		salmsg.message_id=message_id;
+		salmsg.time=date ? belle_sip_header_date_get_time(date) : time(NULL);
+		this->root->callbacks.message_received(this,&salmsg);
+
+		belle_sip_object_unref(address);
+		belle_sip_free(from);
+		if (salmsg.url) ms_free((char*)salmsg.url);
+		ms_free((char *)salmsg.content_type);
+	} else {
+		ms_error("Unsupported MESSAGE (no Content-Type)");
+		resp = belle_sip_response_create_from_request(req, errcode);
+		add_message_accept((belle_sip_message_t*)resp);
+		belle_sip_server_transaction_send_response(server_transaction,resp);
+		release();
+	}
+}
+
+bool_t SalOp::is_external_body(belle_sip_header_content_type_t* content_type) {
+	return strcmp("message",belle_sip_header_content_type_get_type(content_type))==0
+			&&	strcmp("external-body",belle_sip_header_content_type_get_subtype(content_type))==0;
+}
+
+int SalOp::reply_message(SalReason reason) {
+	if (this->pending_server_trans){
+		int code=to_sip_code(reason);
+		belle_sip_response_t *resp = belle_sip_response_create_from_request(
+			belle_sip_transaction_get_request((belle_sip_transaction_t*)this->pending_server_trans),code);
+		belle_sip_server_transaction_send_response(this->pending_server_trans,resp);
+		return 0;
+	}else ms_error("sal_message_reply(): no server transaction");
+	return -1;
+}
+
+void SalOp::add_message_accept(belle_sip_message_t *msg) {
+	bctbx_list_t *item;
+	const char *str;
+	char *old;
+	char *header = ms_strdup("xml/cipher, application/cipher.vnd.gsma.rcs-ft-http+xml");
+
+	for (item = this->root->supported_content_types; item != NULL; item = bctbx_list_next(item)) {
+		str = (const char *)bctbx_list_get_data(item);
+		old = header;
+		header = ms_strdup_printf("%s, %s", old, str);
+		ms_free(old);
+	}
+
+	belle_sip_message_add_header(msg, belle_sip_header_create("Accept", header));
+	ms_free(header);
 }
 
 int to_sip_code(SalReason r) {

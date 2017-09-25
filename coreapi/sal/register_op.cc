@@ -27,7 +27,7 @@ int RegisterOp::register_(const char *proxy, const char *from, int expires, cons
 	}
 	accept_header = belle_sip_header_create("Accept", "application/sdp, text/plain, application/vnd.gsma.rcs-ft-http+xml");
 	belle_sip_message_add_header(BELLE_SIP_MESSAGE(req), accept_header);
-	belle_sip_message_set_header(BELLE_SIP_MESSAGE(req),(belle_sip_header_t*)sal_op_create_contact(op));
+	belle_sip_message_set_header(BELLE_SIP_MESSAGE(req),(belle_sip_header_t*)create_contact());
 	if (old_contact) {
 		belle_sip_header_contact_t *contact=belle_sip_header_contact_create((const belle_sip_header_address_t *)old_contact);
 		if (contact) {
@@ -35,10 +35,10 @@ int RegisterOp::register_(const char *proxy, const char *from, int expires, cons
 			belle_sip_header_contact_set_expires(contact,0); /*remove old aor*/
 			belle_sip_message_add_header(BELLE_SIP_MESSAGE(req), BELLE_SIP_HEADER(contact));
 			tmp = belle_sip_object_to_string(contact);
-			ms_message("Clearing contact [%s] for op [%p]",tmp,op);
+			ms_message("Clearing contact [%s] for op [%p]",tmp,this);
 			ms_free(tmp);
 		} else {
-			ms_error("Cannot add old contact header to op [%p]",op);
+			ms_error("Cannot add old contact header to op [%p]",this);
 		}
 	}
 	return send_and_create_refresher(req,expires,register_refresher_listener);

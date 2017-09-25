@@ -46,7 +46,7 @@ void PresenceOp::presence_refresher_listener_cb(belle_sip_refresher_t* refresher
 			sal_address_destroy(contact);
 		}
 		/*send a new SUBSCRIBE, that will attempt to establish a new dialog*/
-		sal_subscribe_presence(op,NULL,NULL,-1);
+		op->subscribe(NULL,NULL,-1);
 	}
 	if (status_code == 0 || status_code == 503){
 		/*timeout or io error: the remote doesn't seem reachable.*/
@@ -220,7 +220,7 @@ void PresenceOp::presence_process_request_event_cb(void *op_base, const belle_si
 
 	if (!op->dialog) {
 		if (strcmp(method,"SUBSCRIBE")==0){
-			belle_sip_dialog_t *dialog = belle_sip_provider_create_dialog(op->base.root->prov,BELLE_SIP_TRANSACTION(server_transaction));
+			belle_sip_dialog_t *dialog = belle_sip_provider_create_dialog(op->root->prov,BELLE_SIP_TRANSACTION(server_transaction));
 			if (!dialog){
 				resp=op->create_response_from_request(req,481);
 				belle_sip_server_transaction_send_response(server_transaction,resp);
@@ -280,7 +280,7 @@ void PresenceOp::presence_process_dialog_terminated_cb(void *ctx, const belle_si
 	}/* else client dialog is managed by refresher*/
 }
 
-void PresenceOp::release_cb(void *op_base) {
+void PresenceOp::_release_cb(SalOp *op_base) {
 	PresenceOp *op =(PresenceOp*)op_base;
 	if(op->refresher) {
 		belle_sip_refresher_stop(op->refresher);
@@ -302,7 +302,7 @@ void PresenceOp::fill_cbs() {
 	}
 	this->callbacks=&op_presence_callbacks;
 	this->type=Type::Presence;
-	this->release_cb=release_cb;
+	this->release_cb=_release_cb;
 }
 
 int PresenceOp::subscribe(const char *from, const char *to, int expires) {
@@ -412,4 +412,18 @@ int PresenceOp::notify_presence_close() {
 	status = send_request(notify);
 	set_or_update_dialog(NULL);  /*because we may be chalanged for the notify, so we must release dialog right now*/
 	return status;
+}
+
+SalSubscribeStatus PresenceOp::belle_sip_message_get_subscription_state(const belle_sip_message_t *msg) {
+	belle_sip_header_subscription_state_t* subscription_state_header=belle_sip_message_get_header_by_type(msg,belle_sip_header_subscription_state_t);
+	SalSubscribeStatus sss=SalSubscribeNone;
+	if (subscription_state_header){
+		if (strcmp(belle_sip_header_subscription_state_get_state(subscription_state_header),BELLE_SIP_SUBSCRIPTION_STATE_TERMINATED)==0)
+			sss=SalSubscribeTerminated;
+		else if (strcmp(belle_sip_header_subscription_state_get_state(subscription_state_header),BELLE_SIP_SUBSCRIPTION_STATE_PENDING)==0)
+			sss=SalSubscribePending;
+		else if (strcmp(belle_sip_header_subscription_state_get_state(subscription_state_header),BELLE_SIP_SUBSCRIPTION_STATE_ACTIVE)==0)
+			sss=SalSubscribeActive;
+	}
+	return sss;
 }

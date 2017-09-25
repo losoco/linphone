@@ -2,6 +2,7 @@
 #include "bellesip_sal/sal_impl.h"
 #include "offeranswer.h"
 #include <bctoolbox/defs.h>
+#include <belle-sip/provider.h>
 
 using namespace std;
 
@@ -14,7 +15,7 @@ int SalCall::set_local_media_description(SalMediaDescription *desc) {
 	}
 	
 	if (desc) sal_media_description_ref(desc);
-	if (this->local_media) sal_media_description_unref(op->base.local_media);
+	if (this->local_media) sal_media_description_unref(this->local_media);
 	this->local_media=desc;
 
 	if (this->remote_media){
@@ -132,7 +133,7 @@ void SalCall::set_released() {
 		this->root->callbacks.call_released(this);
 		this->call_released=TRUE;
 		/*be aware that the following line may destroy the op*/
-		set_or_update_dialog(this,NULL);
+		set_or_update_dialog(NULL);
 	}
 }
 
@@ -240,7 +241,7 @@ void SalCall::sdp_process(){
 		}
 		offer_answer_initiate_incoming(this->root->factory, this->local_media,this->remote_media,this->result,this->root->one_matching_codec);
 		/*for backward compatibility purpose*/
-		if(this->cnx_ip_to_0000_if_sendonly_enabled && sal_media_description_has_dir(this->result,SalStreamSendOnly)) {
+		if(this->_cnx_ip_to_0000_if_sendonly_enabled && sal_media_description_has_dir(this->result,SalStreamSendOnly)) {
 			set_addr_to_0000(this->result->addr, sizeof(this->result->addr));
 			for(i=0;i<SAL_MEDIA_DESCRIPTION_MAX_STREAMS;++i){
 				if (this->result->streams[i].dir == SalStreamSendOnly) {
@@ -321,7 +322,7 @@ void SalCall::process_response_cb(void *op_base, const belle_sip_response_event_
 		return;
 	}
 	req=belle_sip_transaction_get_request(BELLE_SIP_TRANSACTION(client_transaction));
-	set_or_update_dialog(op,dialog);
+	op->set_or_update_dialog(dialog);
 	dialog_state=dialog ? belle_sip_dialog_get_state(dialog) : BELLE_SIP_DIALOG_NULL;
 	method=belle_sip_request_get_method(req);
 	ms_message("Op [%p] receiving call response [%i], dialog is [%p] in state [%s]",op,code,dialog,belle_sip_dialog_state_to_string(dialog_state));
@@ -399,7 +400,7 @@ void SalCall::process_response_cb(void *op_base, const belle_sip_response_event_
 							&& strcmp("application",belle_sip_header_content_type_get_type(header_content_type))==0
 							&& strcmp("media_control+xml",belle_sip_header_content_type_get_subtype(header_content_type))==0) {
 							unsigned int retry_in = (unsigned int)(1000*((float)rand()/RAND_MAX));
-							belle_sip_source_t *s=sal_create_timer(op->root,vfu_retry_cb,op->ref(), retry_in, "vfu request retry");
+							belle_sip_source_t *s=op->root->create_timer(vfu_retry_cb,op->ref(), retry_in, "vfu request retry");
 							ms_message("Rejected vfu request on op [%p], just retry in [%ui] ms",op,retry_in);
 							belle_sip_object_unref(s);
 						}else {
@@ -523,7 +524,7 @@ SalReason SalCall::process_sdp_for_invite(belle_sip_request_t* invite) {
 
 	if (reason != SalReasonNone){
 		sal_error_info_set(&sei, reason,"SIP", 0, NULL, NULL);
-		sal_call_decline_with_error_info(this, &sei,NULL);
+		decline_with_error_info(&sei,NULL);
 		sal_error_info_reset(&sei);
 	}
 	return reason;
@@ -595,7 +596,7 @@ void SalCall::process_request_event_cb(void *op_base, const belle_sip_request_ev
 	}
 
 	if (!op->dialog) {
-		set_or_update_dialog(op,belle_sip_provider_create_dialog(op->root->prov,BELLE_SIP_TRANSACTION(op->pending_server_trans)));
+		op->set_or_update_dialog(belle_sip_provider_create_dialog(op->root->prov, BELLE_SIP_TRANSACTION(op->pending_server_trans)));
 		ms_message("new incoming call from [%s] to [%s]",op->get_from(),op->get_to());
 	}
 	dialog_state=belle_sip_dialog_get_state(op->dialog);
@@ -703,7 +704,7 @@ void SalCall::process_request_event_cb(void *op_base, const belle_sip_request_ev
 				}
 			}else{
 				belle_sip_message_t *msg = BELLE_SIP_MESSAGE(req);
-				belle_sip_body_handler_t *body_handler = BELLE_SIP_BODY_HANDLER(sal_op_get_body_handler(op, msg));
+				belle_sip_body_handler_t *body_handler = BELLE_SIP_BODY_HANDLER(op->get_body_handler(msg));
 				if (body_handler) {
 					belle_sip_header_content_type_t *content_type = belle_sip_message_get_header_by_type(msg, belle_sip_header_content_type_t);
 					if (content_type
@@ -722,9 +723,9 @@ void SalCall::process_request_event_cb(void *op_base, const belle_sip_request_ev
 			resp=op->create_response_from_request(req,200);
 			belle_sip_server_transaction_send_response(server_transaction,resp);
 		}else if (strcmp("REFER",method)==0) {
-			sal_op_process_refer(op,event,server_transaction);
+			op->process_refer(event,server_transaction);
 		} else if (strcmp("NOTIFY",method)==0) {
-			sal_op_call_process_notify(op,event,server_transaction);
+			op->process_notify(event,server_transaction);
 		} else if (strcmp("OPTIONS",method)==0) {
 			resp=op->create_response_from_request(req,200);
 			belle_sip_server_transaction_send_response(server_transaction,resp);
@@ -740,7 +741,7 @@ void SalCall::process_request_event_cb(void *op_base, const belle_sip_request_ev
 					op->create_response_from_request(belle_sip_transaction_get_request(BELLE_SIP_TRANSACTION(last_transaction)), 487));
 			}
 		} else if (strcmp("MESSAGE",method)==0){
-			sal_process_incoming_message(op,event);
+			op->process_incoming_message(event);
 		}else{
 			ms_error("unexpected method [%s] for dialog [%p]",belle_sip_request_get_method(req),op->dialog);
 			unsupported_method(server_transaction,req);
@@ -837,12 +838,12 @@ int SalCall::call(const char *from, const char *to) {
 int SalCall::notify_ringing(bool_t early_media){
 	int status_code =early_media?183:180;
 	belle_sip_request_t* req=belle_sip_transaction_get_request(BELLE_SIP_TRANSACTION(this->pending_server_trans));
-	belle_sip_response_t* ringing_response = sal_op_create_response_from_request(op,req,status_code);
+	belle_sip_response_t* ringing_response = create_response_from_request(req,status_code);
 	belle_sip_header_t *require;
 	const char *tags=NULL;
 
 	if (early_media){
-		handle_offer_answer_response(op,ringing_response);
+		handle_offer_answer_response(ringing_response);
 	}
 	require=belle_sip_message_get_header((belle_sip_message_t*)req,"Require");
 	if (require) tags=belle_sip_header_get_unparsed_value(require);
@@ -856,7 +857,7 @@ int SalCall::notify_ringing(bool_t early_media){
 	if (tags && strstr(tags,"100rel")!=0)
 #endif
 	{
-		belle_sip_header_address_t* contact= (belle_sip_header_address_t*)sal_op_get_contact_address(op);
+		belle_sip_header_address_t* contact= (belle_sip_header_address_t*)get_contact_address();
 		belle_sip_header_contact_t* contact_header;
 		if (contact && (contact_header=belle_sip_header_contact_create(contact))) {
 			belle_sip_message_add_header(BELLE_SIP_MESSAGE(ringing_response),BELLE_SIP_HEADER(contact_header));
@@ -884,26 +885,26 @@ int SalCall::accept() {
 	ms_message("Accepting server transaction [%p] on op [%p]", transaction, this);
 
 	/* sends a 200 OK */
-	response = sal_op_create_response_from_request(h,belle_sip_transaction_get_request(BELLE_SIP_TRANSACTION(transaction)),200);
+	response = create_response_from_request(belle_sip_transaction_get_request(BELLE_SIP_TRANSACTION(transaction)),200);
 	if (response==NULL){
 		ms_error("Fail to build answer for call");
 		return -1;
 	}
-	belle_sip_message_add_header(BELLE_SIP_MESSAGE(response),BELLE_SIP_HEADER(create_allow(h->base.root->enable_sip_update)));
-	if (h->base.root->session_expires!=0){
+	belle_sip_message_add_header(BELLE_SIP_MESSAGE(response),BELLE_SIP_HEADER(create_allow(this->root->enable_sip_update)));
+	if (this->root->session_expires!=0){
 /*		if (h->supports_session_timers) {*/
 			belle_sip_message_add_header(BELLE_SIP_MESSAGE(response),belle_sip_header_create("Supported", "timer"));
 			belle_sip_message_add_header(BELLE_SIP_MESSAGE(response),belle_sip_header_create( "Session-expires", "600;refresher=uac"));
 		/*}*/
 	}
 
-	if ((contact_header=sal_op_create_contact(this))) {
+	if ((contact_header=create_contact())) {
 		belle_sip_message_add_header(BELLE_SIP_MESSAGE(response),BELLE_SIP_HEADER(contact_header));
 	}
 
-	_sal_op_add_custom_headers(this, BELLE_SIP_MESSAGE(response));
+	add_custom_headers(BELLE_SIP_MESSAGE(response));
 
-	handle_offer_answer_response(h,response);
+	handle_offer_answer_response(response);
 
 	belle_sip_server_transaction_send_response(transaction,response);
 	if (this->pending_update_server_trans) {
@@ -919,7 +920,7 @@ int SalCall::accept() {
 int SalCall::decline(SalReason reason, const char *redirection /*optional*/){
 	belle_sip_response_t* response;
 	belle_sip_header_contact_t* contact=NULL;
-	int status=sal_reason_to_sip_code(reason);
+	int status=to_sip_code(reason);
 	belle_sip_transaction_t *trans;
 
 	if (reason==SalReasonRedirect){
@@ -938,7 +939,7 @@ int SalCall::decline(SalReason reason, const char *redirection /*optional*/){
 		ms_error("sal_call_decline(): no pending transaction to decline.");
 		return -1;
 	}
-	response = sal_op_create_response_from_request(op,belle_sip_transaction_get_request(trans),status);
+	response = create_response_from_request(belle_sip_transaction_get_request(trans),status);
 	if (contact) belle_sip_message_add_header(BELLE_SIP_MESSAGE(response),BELLE_SIP_HEADER(contact));
 	belle_sip_server_transaction_send_response(BELLE_SIP_SERVER_TRANSACTION(trans),response);
 	return 0;
@@ -997,13 +998,13 @@ int SalCall::update(const char *subject, bool_t no_user_consent) {
 	if (this->dialog == NULL) {
 		/* If the dialog does not exist, this is that we are trying to recover from a connection loss
 			during a very early state of outgoing call initiation (the dialog has not been created yet). */
-		const char *from = sal_op_get_from(op);
-		const char *to = sal_op_get_to(op);
-		return sal_call(op, from, to);
+		const char *from = get_from();
+		const char *to = get_to();
+		return call(from, to);
 	}
 
 	state = belle_sip_dialog_get_state(this->dialog);
-	belle_sip_dialog_enable_pending_trans_checking(op->dialog,op->base.root->pending_trans_checking);
+	belle_sip_dialog_enable_pending_trans_checking(this->dialog,this->root->pending_trans_checking);
 
 	/*check for dialog state*/
 	if ( state == BELLE_SIP_DIALOG_CONFIRMED) {
@@ -1141,7 +1142,7 @@ int SalCall::refer_with_replaces(SalCall *other_call_op) {
 
 int SalCall::set_referer(SalCall *refered_call){
 	if (refered_call->replaces)
-		set_replaces(refered_call->replaces);
+		SalOp::set_replaces(refered_call->replaces);
 	if (refered_call->referred_by)
 		set_referred_by(refered_call->referred_by);
 	return 0;
@@ -1192,7 +1193,7 @@ int SalCall::send_dtmf(char dtmf){
 			belle_sip_message_set_body((belle_sip_message_t*)req,dtmf_body,bodylen);
 			belle_sip_message_add_header((belle_sip_message_t*)req,(belle_sip_header_t*)belle_sip_header_content_length_create(bodylen));
 			belle_sip_message_add_header((belle_sip_message_t*)req,(belle_sip_header_t*)belle_sip_header_content_type_create("application", "dtmf-relay"));
-			sal_op_send_request(h,req);
+			send_request(req);
 		}else ms_error("sal_call_send_dtmf(): could not build request");
 	}else ms_error("sal_call_send_dtmf(): no dialog");
 	return 0;
@@ -1205,14 +1206,14 @@ int SalCall::terminate_with_error(const SalErrorInfo *info) {
 	int ret = 0;
 
 	memset(&sei, 0, sizeof(sei));
-	if (info == NULL && dialog_state != BELLE_SIP_DIALOG_CONFIRMED && op->dir == Dir::Incoming){
+	if (info == NULL && dialog_state != BELLE_SIP_DIALOG_CONFIRMED && this->dir == Dir::Incoming){
 		/*the purpose of this line is to set a default SalErrorInfo for declining an incoming call (not yet established of course) */
 		sal_error_info_set(&sei,SalReasonDeclined, "SIP", 0, NULL, NULL);
 		p_sei = &sei;
 	} else{
 		p_sei = info;
 	}
-	if (op->state==State::Terminating || op->state==State::Terminated) {
+	if (this->state==State::Terminating || this->state==State::Terminated) {
 		ms_error("Cannot terminate op [%p] in state [%s]",this,to_string(this->state));
 		ret = -1;
 		goto end;
@@ -1316,7 +1317,7 @@ int SalCall::send_notify_for_refer(int code, const char *reason) {
 	return send_request(notify);
 }
 
-void SalCall::notify_last_response(SalOp *newcall) {
+void SalCall::notify_last_response(SalCall *newcall) {
 	belle_sip_client_transaction_t *tr=newcall->pending_client_trans;
 	belle_sip_response_t *resp=NULL;
 	if (tr){
@@ -1329,7 +1330,7 @@ void SalCall::notify_last_response(SalOp *newcall) {
 	}
 }
 
-int SalCall::notify_refer_state(SalOp *newcall) {
+int SalCall::notify_refer_state(SalCall *newcall) {
 	belle_sip_dialog_state_t state;
 	if(belle_sip_dialog_get_state(this->dialog) == BELLE_SIP_DIALOG_TERMINATED){
 		return 0;
@@ -1386,7 +1387,7 @@ void SalCall::process_refer(const belle_sip_request_event_t *event, belle_sip_se
 		belle_sip_free(refer_to_uri_str);
 	} else {
 		ms_warning("cannot do anything with the refer without destination\n");
-		resp = sal_op_create_response_from_request(op,req,400);
+		resp = create_response_from_request(req,400);
 		belle_sip_server_transaction_send_response(server_transaction,resp);
 	}
 
@@ -1437,6 +1438,33 @@ int SalCall::send_message(const char *from, const char *to, const char* content_
 	return send_request(req);
 }
 
-bool_t SalCall::compare_op(const SalOp *op2) const {
+bool_t SalCall::compare_op(const SalCall *op2) const {
 	return (strcmp(this->call_id, op2->call_id) == 0);
+}
+
+void SalCall::handle_offer_answer_response(belle_sip_response_t* response) {
+	if (this->local_media){
+		/*this is the case where we received an invite without SDP*/
+		if (this->sdp_offering) {
+			set_sdp_from_desc(BELLE_SIP_MESSAGE(response),this->local_media);
+		}else{
+
+			if ( this->sdp_answer==NULL )
+			{
+				if( this->sdp_handling == SalOpSDPSimulateRemove ){
+					ms_warning("Simulating SDP removal in answer for op %p", this);
+				} else {
+					sdp_process();
+				}
+			}
+
+			if (this->sdp_answer){
+				set_sdp(BELLE_SIP_MESSAGE(response),this->sdp_answer);
+				belle_sip_object_unref(this->sdp_answer);
+				this->sdp_answer=NULL;
+			}
+		}
+	}else{
+		ms_error("You are accepting a call but not defined any media capabilities !");
+	}
 }

@@ -32,8 +32,8 @@ public:
 	bool_t autoanswer_asked() const {return this->auto_answer_asked;}
 	void send_vfu_request();
 	int is_offerer() const {return this->sdp_offering;}
-	int notify_refer_state(SalOp *newcall);
-	bool_t compare_op(const SalOp *op2) const;
+	int notify_refer_state(SalCall *newcall);
+	bool_t compare_op(const SalCall *op2) const;
 	bool_t dialog_request_pending() const {return (belle_sip_dialog_request_pending(this->dialog) != 0);}
 	const char *get_local_tag() {return belle_sip_dialog_get_local_tag(this->dialog);}
 	const char *get_remote_tag() {return belle_sip_dialog_get_remote_tag(this->dialog);}
@@ -41,6 +41,7 @@ public:
 	void set_sdp_handling(SalOpSDPHandling handling);
 	
 	virtual int send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) override;
+	virtual int reply(SalReason reason) override {return SalOp::reply_message(reason);}
 
 private:
 	static belle_sip_header_allow_t *create_allow(bool_t enable_update);
@@ -73,10 +74,11 @@ private:
 	void fill_invite(belle_sip_request_t* invite);
 	static belle_sip_header_reason_t *make_reason_header( const SalErrorInfo *info);
 	int refer_to(belle_sip_header_refer_to_t* refer_to, belle_sip_header_referred_by_t* referred_by);
-	void notify_last_response(SalOp *newcall);
+	void notify_last_response(SalCall *newcall);
 	int send_notify_for_refer(int code, const char *reason);
 	void process_refer(const belle_sip_request_event_t *event, belle_sip_server_transaction_t *server_transaction);
 	void process_notify(const belle_sip_request_event_t *event, belle_sip_server_transaction_t* server_transaction);
+	void handle_offer_answer_response(belle_sip_response_t* response);
 };
 
 #endif

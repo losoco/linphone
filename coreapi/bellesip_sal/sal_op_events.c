@@ -18,6 +18,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "sal_impl.h"
 
+#if 0
 SalSubscribeStatus belle_sip_message_get_subscription_state(const belle_sip_message_t *msg){
 	belle_sip_header_subscription_state_t* subscription_state_header=belle_sip_message_get_header_by_type(msg,belle_sip_header_subscription_state_t);
 	SalSubscribeStatus sss=SalSubscribeNone;
@@ -32,7 +33,6 @@ SalSubscribeStatus belle_sip_message_get_subscription_state(const belle_sip_mess
 	return sss;
 }
 
-#if 0
 static void subscribe_refresher_listener (belle_sip_refresher_t* refresher
 		,void* user_pointer
 		,unsigned int status_code

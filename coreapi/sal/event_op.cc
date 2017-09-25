@@ -182,8 +182,8 @@ void SubscribeOp::subscribe_process_dialog_terminated_cb(void *ctx, const belle_
 	}
 }
 
-void SubscribeOp::release_cb(void *op_base) {
-	SubscribeOp *op =(SubscribeOp*)op_base;
+void SubscribeOp::_release_cb(SalOp *op_base) {
+	auto *op =reinterpret_cast<SubscribeOp *>(op_base);
 	if(op->refresher) {
 		belle_sip_refresher_stop(op->refresher);
 		belle_sip_object_unref(op->refresher);

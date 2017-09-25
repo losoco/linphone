@@ -413,9 +413,6 @@ void sal_custom_body_set_buffer_by_moving(SalCustomBody *body, char *buffer, siz
 }
 #endif
 
-struct SalOpBase;
-typedef void (*SalOpReleaseCb)(struct SalOpBase *op);
-
 
 typedef enum SalReason{
 	SalReasonNone, /*no error, please leave first so that it takes 0 value*/

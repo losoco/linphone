@@ -20,6 +20,8 @@ private:
 	belle_sip_request_t *create_presence_notify();
 	void add_presence_info(belle_sip_message_t *notify, SalPresenceModel *presence);
 	
+	static SalSubscribeStatus belle_sip_message_get_subscription_state(const belle_sip_message_t *msg);
+	
 	static void presence_process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event);
 	static void presence_response_event_cb(void *op_base, const belle_sip_response_event_t *event);
 	static void presence_refresher_listener_cb(belle_sip_refresher_t* refresher, void* user_pointer, unsigned int status_code, const char* reason_phrase, int will_retry);
@@ -27,7 +29,7 @@ private:
 	static void presence_process_transaction_terminated_cb(void *user_ctx, const belle_sip_transaction_terminated_event_t *event);
 	static void presence_process_request_event_cb(void *op_base, const belle_sip_request_event_t *event);
 	static void presence_process_dialog_terminated_cb(void *ctx, const belle_sip_dialog_terminated_event_t *event);
-	static void release_cb(void *op_base);
+	static void _release_cb(SalOp *op_base);
 };
 
 #endif // _LINPHONE_SAL_PRESENCE_OP

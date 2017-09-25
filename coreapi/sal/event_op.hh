@@ -5,7 +5,7 @@
 
 class EventOp: public SalOp {
 public:
-    EventOp(Sal *sal): SalOp(sal) {}
+	EventOp(Sal *sal): SalOp(sal) {}
 };
 
 class SubscribeOp: public EventOp {
@@ -30,7 +30,7 @@ private:
 	static void subscribe_process_transaction_terminated_cb(void *user_ctx, const belle_sip_transaction_terminated_event_t *event) {}
 	static void subscribe_process_request_event_cb(void *op_base, const belle_sip_request_event_t *event);
 	static void subscribe_process_dialog_terminated_cb(void *ctx, const belle_sip_dialog_terminated_event_t *event);
-	static void release_cb(void *op_base);
+	static void _release_cb(SalOp *op_base);
 	static void subscribe_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry);
 };
 
