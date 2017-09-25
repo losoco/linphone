@@ -1363,6 +1363,7 @@ const char *sal_get_http_proxy_host(const Sal *sal) {
 int sal_get_http_proxy_port(const Sal *sal) {
 	return belle_sip_stack_get_http_proxy_port(sal->stack);
 }
+#endif
 
 static belle_sip_header_t * sal_body_handler_find_header(const SalBodyHandler *body_handler, const char *header_name) {
 	belle_sip_body_handler_t *bsbh = BELLE_SIP_BODY_HANDLER(body_handler);
@@ -1493,6 +1494,7 @@ const char * sal_body_handler_get_header(const SalBodyHandler *body_handler, con
 	}
 	return NULL;
 }
+#if 0
 
 void *sal_get_stack_impl(Sal *sal) {
 	return sal->stack;

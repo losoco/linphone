@@ -291,11 +291,9 @@ public:
 	void kill_dialog();
 	void release();
 	
-	void authenticate(const SalAuthInfo *info);
+	virtual void authenticate(const SalAuthInfo *info) {process_authentication();}
 	void cancel_authentication() {ms_fatal("sal_op_cancel_authentication not implemented yet");}
 	SalAuthInfo *get_auth_requested() {return this->auth_info;}
-	
-	int register_refresh(int expires);
 	
 	int ping(const char *from, const char *to);
 	int send_info(const char *from, const char *to, const SalBodyHandler *body_handler);

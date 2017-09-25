@@ -1222,17 +1222,6 @@ void SalOp::process_authentication() {
 	}
 }
 
-void SalOp::authenticate(const SalAuthInfo *info) {
-	if (this->type == Type::Register) {
-		/*Registration authenticate is just about registering again*/
-		register_refresh(-1);
-	}else {
-		/*for sure auth info will be accessible from the provider*/
-		process_authentication();
-	}
-	return ;
-}
-
 char *SalOp::get_dialog_id() const {
 	if (this->dialog != NULL) {
 		return ms_strdup_printf("%s;to-tag=%s;from-tag=%s", this->call_id,
@@ -1816,6 +1805,13 @@ void SalOp::add_message_accept(belle_sip_message_t *msg) {
 
 	belle_sip_message_add_header(msg, belle_sip_header_create("Accept", header));
 	ms_free(header);
+}
+
+void SalOp::set_service_route(const SalAddress* service_route) {
+	if (this->service_route)
+		sal_address_destroy(this->service_route);
+
+	this->service_route=service_route?sal_address_clone(service_route):NULL;
 }
 
 int to_sip_code(SalReason r) {
