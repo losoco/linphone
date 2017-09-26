@@ -18,8 +18,8 @@
 
 #include <stdio.h>
 #include "linphone/core.h"
-#include "private.h"
 #include "liblinphone_tester.h"
+#include "quality_reporting.h"
 
 /*avoid crash if x is NULL on libc versions <4.5.26 */
 #define __strstr(x, y) ((x==NULL)?NULL:strstr(x,y))

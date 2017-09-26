@@ -1775,7 +1775,7 @@ static void ui_config_read(LinphoneCore *lc)
 		read_friends_from_rc(lc);
 	}
 	if (!lc->logs_db) {
-		lc->call_logs = call_logs_read_from_config_file(lc);
+		lc->call_logs = linphone_core_read_call_logs_from_config_file(lc);
 	}
 #endif
 }
@@ -4672,7 +4672,7 @@ void linphone_core_migrate_logs_from_rc_to_db(LinphoneCore *lc) {
 		return;
 	}
 
-	logs_to_migrate = call_logs_read_from_config_file(lc);
+	logs_to_migrate = linphone_core_read_call_logs_from_config_file(lc);
 	if (!logs_to_migrate) {
 		ms_warning("nothing to migrate, skipping...");
 		return;

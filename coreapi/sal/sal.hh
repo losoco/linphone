@@ -7,6 +7,7 @@ class SalOp;
 class SalCall;
 class MessageOp;
 class SubscribeOp;
+class PresenceOp;
 
 class Sal{
 public:
@@ -38,8 +39,8 @@ public:
 	typedef void (*OnParsePresenceRequestedCb)(SalOp *salop, const char *content_type, const char *content_subtype, const char *content, SalPresenceModel **result);
 	typedef void (*OnConvertPresenceToXMLRequestedCb)(SalOp *salop, SalPresenceModel *presence, const char *contact, char **content);
 	typedef void (*OnNotifyPresenceCb)(SalOp *op, SalSubscribeStatus ss, SalPresenceModel *model, const char *msg);
-	typedef void (*OnSubscribePresenceReceivedCb)(SalOp *salop, const char *from);
-	typedef void (*OnSubscribePresenceClosedCb)(SalOp *salop, const char *from);
+	typedef void (*OnSubscribePresenceReceivedCb)(PresenceOp *salop, const char *from);
+	typedef void (*OnSubscribePresenceClosedCb)(PresenceOp *salop, const char *from);
 	typedef void (*OnPingReplyCb)(SalOp *salop);
 	typedef void (*OnInfoReceivedCb)(SalOp *salop, SalBodyHandler *body);
 	typedef void (*OnPublishResponseCb)(SalOp *salop);

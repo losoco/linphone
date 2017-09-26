@@ -1,11 +1,11 @@
 #ifndef _LINPHONE_SAL_PRESENCE_OP
 #define _LINPHONE_SAL_PRESENCE_OP
 
-#include "sal.hh"
+#include "event_op.hh"
 
-class PresenceOp: public SalOp {
+class PresenceOp: public SubscribeOp {
 public:
-	PresenceOp(Sal *sal): SalOp(sal) {}
+	PresenceOp(Sal *sal): SubscribeOp(sal) {}
 	
 	int subscribe(const char *from, const char *to, int expires);
     int unsubscribe() {return SalOp::unsubscribe();}

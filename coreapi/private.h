@@ -44,6 +44,7 @@
 #include "vcard_private.h"
 #include "carddav.h"
 #include "linphone/player.h"
+#include "account_creator.h"
 
 #include "bctoolbox/port.h"
 #include "bctoolbox/map.h"
@@ -279,7 +280,7 @@ void linphone_call_notify_info_message_received(LinphoneCall *call, const Linpho
 void linphone_call_notify_ack_processing(LinphoneCall *call, LinphoneHeaders *msg, bool_t is_received);
 
 LinphoneCall * linphone_call_new_outgoing(struct _LinphoneCore *lc, const LinphoneAddress *from, const LinphoneAddress *to, const LinphoneCallParams *params, LinphoneProxyConfig *cfg);
-LinphoneCall * linphone_call_new_incoming(struct _LinphoneCore *lc, const LinphoneAddress *from, const LinphoneAddress *to, SalOp *op);
+LinphoneCall * linphone_call_new_incoming(struct _LinphoneCore *lc, const LinphoneAddress *from, const LinphoneAddress *to, SalCall *op);
 void _linphone_call_set_new_params(LinphoneCall *call, const LinphoneCallParams *params);
 void linphone_call_set_state(LinphoneCall *call, LinphoneCallState cstate, const char *message);
 /* private: */
@@ -292,7 +293,7 @@ void linphone_call_reinvite_to_recover_from_connection_loss(LinphoneCall *call);
 
 SalCall *linphone_call_get_op(const LinphoneCall *call);
 LinphoneProxyConfig * linphone_call_get_dest_proxy(const LinphoneCall *call);
-MediaStream * linphone_call_get_stream(LinphoneCall *call, LinphoneStreamType type);
+LINPHONE_PUBLIC MediaStream * linphone_call_get_stream(LinphoneCall *call, LinphoneStreamType type);
 LinphoneCallLog * linphone_call_get_log(const LinphoneCall *call);
 IceSession * linphone_call_get_ice_session(const LinphoneCall *call);
 bool_t linphone_call_get_audio_muted(const LinphoneCall *call);
@@ -420,7 +421,7 @@ static MS2_INLINE void set_string(char **dest, const char *src, bool_t lowercase
 
 void linphone_process_authentication(LinphoneCore* lc, SalOp *op);
 void linphone_authentication_ok(LinphoneCore *lc, SalOp *op);
-void linphone_subscription_new(LinphoneCore *lc, SalOp *op, const char *from);
+void linphone_subscription_new(LinphoneCore *lc, SubscribeOp *op, const char *from);
 void linphone_core_send_presence(LinphoneCore *lc, LinphonePresenceModel *presence);
 void linphone_notify_parse_presence(const char *content_type, const char *content_subtype, const char *body, SalPresenceModel **result);
 void linphone_notify_convert_presence_to_xml(SalOp *op, SalPresenceModel *presence, const char *contact, char **content);
@@ -1117,7 +1118,7 @@ void _linphone_core_codec_config_write(LinphoneCore *lc);
 	#endif
 #endif
 
-LINPHONE_PUBLIC bctbx_list_t * call_logs_read_from_config_file(LinphoneCore *lc);
+LINPHONE_PUBLIC bctbx_list_t * linphone_core_read_call_logs_from_config_file(LinphoneCore *lc);
 void call_logs_write_to_config_file(LinphoneCore *lc);
 void linphone_core_call_log_storage_init(LinphoneCore *lc);
 void linphone_core_call_log_storage_close(LinphoneCore *lc);
@@ -1277,174 +1278,6 @@ struct _LinphoneXmlRpcSession {
 
 BELLE_SIP_DECLARE_VPTR_NO_EXPORT(LinphoneXmlRpcSession);
 
-
-/*****************************************************************************
- * Account creator interface                                                 *
- ****************************************************************************/
-
-struct _LinphoneAccountCreatorService {
-	belle_sip_object_t base;
-	void *user_data;
-
-	LinphoneAccountCreatorRequestFunc account_creator_service_constructor_cb; /**< Constructor */
-	LinphoneAccountCreatorRequestFunc account_creator_service_destructor_cb; /**< Destructor */
-
-	LinphoneAccountCreatorRequestFunc create_account_request_cb; /**< Request to create account */
-	LinphoneAccountCreatorRequestFunc is_account_exist_request_cb; /**< Request to know if account exist */
-
-	LinphoneAccountCreatorRequestFunc activate_account_request_cb; /**< Request to activate account */
-	LinphoneAccountCreatorRequestFunc is_account_activated_request_cb; /**< Request to know if account is activated */
-
-	LinphoneAccountCreatorRequestFunc link_account_request_cb; /**< Request to link account with an alias */
-	LinphoneAccountCreatorRequestFunc activate_alias_request_cb; /**< Request to activate the link of alias */
-	LinphoneAccountCreatorRequestFunc is_alias_used_request_cb; /**< Request to know if alias is used */
-	LinphoneAccountCreatorRequestFunc is_account_linked_request_cb; /**< Request to know if account is linked with an alias */
-
-	LinphoneAccountCreatorRequestFunc recover_account_request_cb; /**< Request to recover account */
-	LinphoneAccountCreatorRequestFunc update_account_request_cb; /**< Request to update account */
-};
-
-BELLE_SIP_DECLARE_VPTR_NO_EXPORT(LinphoneAccountCreatorService);
-
-struct _LinphoneAccountCreatorCbs {
-	belle_sip_object_t base;
-	void *user_data;
-
-	LinphoneAccountCreatorCbsStatusCb create_account_response_cb; /**< Response of create_account request */
-	LinphoneAccountCreatorCbsStatusCb is_account_exist_response_cb; /**< Response of is_account_exist request */
-
-	LinphoneAccountCreatorCbsStatusCb activate_account_response_cb; /**< Response of activate_account request */
-	LinphoneAccountCreatorCbsStatusCb is_account_activated_response_cb; /**< Response of is_account_activated request */
-
-	LinphoneAccountCreatorCbsStatusCb link_account_response_cb; /**< Response of link_account request */
-	LinphoneAccountCreatorCbsStatusCb activate_alias_response_cb; /**< Response of activation alias */
-	LinphoneAccountCreatorCbsStatusCb is_alias_used_response_cb; /**< Response of is_alias_used request */
-	LinphoneAccountCreatorCbsStatusCb is_account_linked_response_cb; /**< Response of is_account_linked request */
-
-	LinphoneAccountCreatorCbsStatusCb recover_account_response_cb; /**< Response of recover_account request */
-	LinphoneAccountCreatorCbsStatusCb update_account_response_cb; /**< Response of update_account request */
-};
-
-BELLE_SIP_DECLARE_VPTR_NO_EXPORT(LinphoneAccountCreatorCbs);
-
-struct _LinphoneAccountCreator {
-	belle_sip_object_t base;
-	void *user_data;
-	LinphoneCore *core;
-
-	/* AccountCreator */
-	LinphoneAccountCreatorService *service; /**< Account creator service */
-	LinphoneAccountCreatorCbs *cbs; /**< Account creator cbs */
-	LinphoneXmlRpcSession *xmlrpc_session; /**< XML-RPC session */
-	LinphoneProxyConfig *proxy_cfg; /**< Default proxy config */
-
-	/* User */
-	char *username; /**< Username */
-	char *display_name; /**< Display name */
-	/* Password */
-	char *password; /**< Plain text password */
-	char *ha1; /**< Hash password */
-	/* Phone Number(Alias) */
-	char *phone_number; /**< User phone number*/
-	char *phone_country_code; /**< User phone number country code */
-	/* Email(Alias) */
-	char *email; /**< User email */
-	/* Misc */
-	char *language; /**< User language */
-	char *activation_code; /**< Account validation code */
-	char *domain; /**< Domain */
-	LinphoneTransportType transport; /**< Transport used */
-
-	/* Deprecated */
-	char *route;
-};
-
-BELLE_SIP_DECLARE_VPTR_NO_EXPORT(LinphoneAccountCreator);
-
-/**
- * Account creator custom to set Linphone default values
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_constructor_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to test the existence of a Linphone account.
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_is_account_exist_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to create a Linphone account.
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_create_account_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to activate a Linphone account with phone number.
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_activate_account_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to activate a Linphone account with email.
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_activate_email_account_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to test the validation of a Linphone account.
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_is_account_activated_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to test the existence a phone number with a Linphone account.
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_is_phone_number_used_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to link a phone number with a Linphone account.
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_link_phone_number_with_account_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to activate the link of a phone number with a Linphone account.
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_activate_phone_number_link_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to a Linphone account with the phone number.
- * @param[in] creator LinphoneAccountCreator object
- * @return LinphoneAccountCreatorStatusRequestOk if the request has been sent, LinphoneAccountCreatorStatusRequestFailed otherwise
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_recover_phone_account_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to ask if an account is linked with a phone number
- * @param[in] creator LinphoneAccountCreator object
- * @return if this account is linked with a phone number
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_is_account_linked_linphone(LinphoneAccountCreator *creator);
-
-/**
- * Send an XML-RPC request to ask if an account is linked with a phone number
- * @param[in] creator LinphoneAccountCreator object
- * @param[in] new_pwd const char * : new password for the account creator
- * @return LinphoneAccountCreatorStatusRequestOk if everything is OK, or a specific error otherwise.
-**/
-LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_update_password_linphone(LinphoneAccountCreator *creator);
 
 
 /*****************************************************************************

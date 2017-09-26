@@ -462,12 +462,12 @@ static void notify_presence(SalOp *op, SalSubscribeStatus ss, SalPresenceModel *
 	linphone_notify_recv(lc,op,ss,model);
 }
 
-static void subscribe_presence_received(SalOp *op, const char *from){
+static void subscribe_presence_received(PresenceOp *op, const char *from){
 	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 	linphone_subscription_new(lc,op,from);
 }
 
-static void subscribe_presence_closed(SalOp *op, const char *from){
+static void subscribe_presence_closed(PresenceOp *op, const char *from){
 	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 	linphone_subscription_closed(lc,op);
 }
