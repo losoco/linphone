@@ -17,11 +17,13 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#ifndef _ACCOUNT_CREATOR_H_
-#define _ACCOUNT_CREATOR_H_
+#ifndef _ACCOUNT_CREATOR_PRIVATE_H_
+#define _ACCOUNT_CREATOR_PRIVATE_H_
 
 #include "linphone/defs.h"
 #include <belle-sip/object.h>
+#include "linphone/account_creator_service.h"
+#include "linphone/account_creator.h"
 
 struct _LinphoneAccountCreatorService {
 	belle_sip_object_t base;
@@ -196,4 +198,4 @@ LINPHONE_PUBLIC LinphoneAccountCreatorStatus linphone_account_creator_update_pas
 }
 #endif
 
-#endif // _ACCOUNT_CREATOR_H_
+#endif // _ACCOUNT_CREATOR_PRIVATE_H_

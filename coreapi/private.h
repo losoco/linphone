@@ -44,7 +44,7 @@
 #include "vcard_private.h"
 #include "carddav.h"
 #include "linphone/player.h"
-#include "account_creator.h"
+#include "account_creator_private.h"
 
 #include "bctoolbox/port.h"
 #include "bctoolbox/map.h"

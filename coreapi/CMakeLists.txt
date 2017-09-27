@@ -109,13 +109,7 @@ set(LINPHONE_SOURCE_FILES_C
 	quality_reporting.c
 	remote_provisioning.c
 	ringtoneplayer.c
-	sal/event_op.cc
-	sal/message_op.cc
-	sal/presence_op.cc
-	sal/register_op.cc
 	sal/sal.c
-	sal/sal_call.cc
-	sal/sal.cc
 	siplogin.c
 	sipsetup.c
 	sqlite3_bctbx_vfs.c
@@ -127,6 +121,13 @@ set(LINPHONE_SOURCE_FILES_C
 )
 set(LINPHONE_SOURCE_FILES_CXX
 	conference.cc
+	sal/event_op.cc
+	sal/message_op.cc
+	sal/presence_op.cc
+	sal/register_op.cc
+	sal/sal_call.cc
+	sal/sal.cc
+	tester_utils.cpp
 )
 if(ANDROID)
 	list(APPEND LINPHONE_SOURCE_FILES_CXX linphonecore_jni.cc)

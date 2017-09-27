@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #ifndef _TESTER_UTILS_H_
 #define _TESTER_UTILS_H_
 
-#include "account_creator.h"
+#include "account_creator_private.h"
 #include "linphone/core.h"
 #include "linphone/tunnel.h"
 #include "sal/sal.h"
@@ -28,8 +28,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "quality_reporting.h"
 #include "vcard_private.h"
 
+#ifndef __cplusplus
 typedef struct _Sal Sal;
 typedef struct _SalOp SalOp;
+#endif
+
 typedef struct _LinphoneQualityReporting LinphoneQualityReporting;
 
 typedef enum _LinphoneProxyConfigAddressComparisonResult{
@@ -42,7 +45,6 @@ typedef enum _LinphoneProxyConfigAddressComparisonResult{
 extern "C" {
 #endif
 
-LINPHONE_PUBLIC Sal *linphone_core_get_sal(const LinphoneCore *lc);
 LINPHONE_PUBLIC LinphoneVcardContext *linphone_core_get_vcard_context(const LinphoneCore *lc);
 LINPHONE_PUBLIC bool_t linphone_core_rtcp_enabled(const LinphoneCore *lc);
 LINPHONE_PUBLIC void linphone_core_get_local_ip(LinphoneCore *lc, int af, const char *dest, char *result);
@@ -72,13 +74,11 @@ LINPHONE_PUBLIC const MSList *linphone_core_get_call_history(LinphoneCore *lc);
 LINPHONE_PUBLIC void linphone_core_delete_call_history(LinphoneCore *lc);
 LINPHONE_PUBLIC int linphone_core_get_call_history_size(LinphoneCore *lc);
 
-LINPHONE_PUBLIC void linphone_core_cbs_set_auth_info_requested(LinphoneCoreCbs *cbs, LinphoneCoreAuthInfoRequestedCb cb);
+LINPHONE_DEPRECATED LINPHONE_PUBLIC void linphone_core_cbs_set_auth_info_requested(LinphoneCoreCbs *cbs, LinphoneCoreAuthInfoRequestedCb cb);
 
-LINPHONE_PUBLIC SalOp *linphone_proxy_config_get_sal_op(const LinphoneProxyConfig *cfg);
 LINPHONE_PUBLIC LinphoneProxyConfigAddressComparisonResult linphone_proxy_config_is_server_config_changed(const LinphoneProxyConfig* obj);
 LINPHONE_PUBLIC LinphoneProxyConfigAddressComparisonResult linphone_proxy_config_address_equal(const LinphoneAddress *a, const LinphoneAddress *b);
 
-LINPHONE_PUBLIC SalOp *linphone_call_get_op_as_sal_op(const LinphoneCall *call);
 LINPHONE_PUBLIC LinphoneCallLog *linphone_call_get_log(const LinphoneCall *call);
 LINPHONE_PUBLIC MediaStream * linphone_call_get_stream(LinphoneCall *call, LinphoneStreamType type);
 LINPHONE_PUBLIC bool_t linphone_call_get_all_muted(const LinphoneCall *call);
@@ -91,8 +91,8 @@ LINPHONE_PUBLIC bool_t linphone_call_stats_is_updated(const LinphoneCallStats *s
 LINPHONE_PUBLIC bool_t linphone_call_stats_get_rtcp_received_via_mux(const LinphoneCallStats *stats);
 LINPHONE_PUBLIC mblk_t *linphone_call_stats_get_received_rtcp(const LinphoneCallStats *stats);
 
-LINPHONE_PUBLIC LinphoneQualityReporting *linphone_call_log_get_quality_reporting(const LinphoneCallLog *call_log);
-LINPHONE_PUBLIC reporting_session_report_t **linphone_quality_reporting_get_reports(const LinphoneQualityReporting *qreporting);
+LINPHONE_PUBLIC LinphoneQualityReporting *linphone_call_log_get_quality_reporting(LinphoneCallLog *call_log);
+LINPHONE_PUBLIC reporting_session_report_t **linphone_quality_reporting_get_reports(LinphoneQualityReporting *qreporting);
 
 LINPHONE_PUBLIC bctbx_list_t * linphone_chat_room_get_transient_messages(const LinphoneChatRoom *cr);
 
@@ -100,7 +100,7 @@ LINPHONE_PUBLIC MSList* linphone_core_fetch_friends_from_db(LinphoneCore *lc, Li
 LINPHONE_PUBLIC MSList* linphone_core_fetch_friends_lists_from_db(LinphoneCore *lc);
 LINPHONE_PUBLIC void linphone_friend_invalidate_subscription(LinphoneFriend *lf);
 LINPHONE_PUBLIC void linphone_friend_update_subscribes(LinphoneFriend *fr, bool_t only_when_registered);
-LINPHONE_PUBLIC MSList *linphone_friend_get_insubs(const LinphoneFriend *fr);
+LINPHONE_PUBLIC const bctbx_list_t *linphone_friend_get_insubs(const LinphoneFriend *fr);
 LINPHONE_PUBLIC int linphone_friend_list_get_expected_notification_version(const LinphoneFriendList *list);
 LINPHONE_PUBLIC unsigned int linphone_friend_list_get_storage_id(const LinphoneFriendList *list);
 LINPHONE_PUBLIC unsigned int linphone_friend_get_storage_id(const LinphoneFriend *lf);
@@ -113,6 +113,10 @@ LINPHONE_PUBLIC int linphone_friend_list_get_revision(const LinphoneFriendList *
 LINPHONE_PUBLIC int linphone_remote_provisioning_load_file( LinphoneCore* lc, const char* file_path);
 
 
+#ifndef __cplusplus
+LINPHONE_PUBLIC Sal *linphone_core_get_sal(const LinphoneCore *lc);
+LINPHONE_PUBLIC SalOp *linphone_proxy_config_get_sal_op(const LinphoneProxyConfig *cfg);
+LINPHONE_PUBLIC SalOp *linphone_call_get_op_as_sal_op(const LinphoneCall *call);
 
 LINPHONE_PUBLIC Sal * sal_init(MSFactory *factory);
 LINPHONE_PUBLIC void sal_uninit(Sal* sal);
@@ -139,6 +143,7 @@ LINPHONE_PUBLIC const SalErrorInfo *sal_op_get_error_info(const SalOp *op);
 LINPHONE_PUBLIC bool_t sal_call_dialog_request_pending(const SalOp *op);
 LINPHONE_PUBLIC void sal_call_set_sdp_handling(SalOp *h, SalOpSDPHandling handling);
 LINPHONE_PUBLIC SalMediaDescription * sal_call_get_final_media_description(SalOp *h);
+#endif
 
 #ifdef __cplusplus
 }

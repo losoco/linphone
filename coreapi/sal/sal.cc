@@ -4,6 +4,7 @@
 #include "event_op.hh"
 #include "message_op.hh"
 #include "bellesip_sal/sal_impl.h"
+#include "tester_utils.h"
 
 using namespace std;
 
@@ -1814,6 +1815,10 @@ void SalOp::set_service_route(const SalAddress* service_route) {
 	this->service_route=service_route?sal_address_clone(service_route):NULL;
 }
 
+/***********************************/
+/* Global functions implementation */
+/***********************************/
+
 int to_sip_code(SalReason r) {
 	int ret=500;
 	switch(r){
@@ -1891,4 +1896,95 @@ int to_sip_code(SalReason r) {
 			break;
 	}
 	return ret;
+}
+
+/*******************************/
+/* C++ to C wrapping functions */
+/*******************************/
+
+Sal *sal_init(MSFactory *factory) {
+	return new Sal(factory);
+}
+
+void sal_uninit(Sal* sal) {
+	delete sal;
+}
+
+int sal_create_uuid(Sal *ctx, char *uuid, size_t len) {
+	return ctx->create_uuid(uuid, len);
+}
+
+void sal_set_uuid(Sal *ctx, const char *uuid) {
+	ctx->set_uuid(uuid);
+}
+
+void sal_default_set_sdp_handling(Sal* h, SalOpSDPHandling handling_method) {
+	h->set_default_sdp_handling(handling_method);
+}
+
+void sal_set_send_error(Sal *sal,int value) {
+	sal->set_send_error(value);
+}
+
+void sal_set_recv_error(Sal *sal,int value) {
+	sal->set_recv_error(value);
+}
+
+int sal_enable_pending_trans_checking(Sal *sal, bool_t value) {
+	return sal->enable_pending_trans_checking(value);
+}
+
+void sal_enable_unconditional_answer(Sal *sal,int value) {
+	sal->enable_unconditional_answer(value);
+}
+
+void sal_set_dns_timeout(Sal* sal,int timeout) {
+	sal->set_dns_timeout(timeout);
+}
+
+void sal_set_dns_user_hosts_file(Sal *sal, const char *hosts_file) {
+	sal->set_dns_user_hosts_file(hosts_file);
+}
+
+void *sal_get_stack_impl(Sal *sal) {
+	return sal->get_stack_impl();
+}
+
+void sal_set_refresher_retry_after(Sal *sal,int value) {
+	sal->set_refresher_retry_after(value);
+}
+
+int sal_get_refresher_retry_after(const Sal *sal) {
+	return sal->get_refresher_retry_after();
+}
+
+void sal_set_transport_timeout(Sal* sal,int timeout) {
+	sal->set_transport_timeout(timeout);
+}
+
+void sal_enable_test_features(Sal*ctx, bool_t enabled) {
+	ctx->enable_test_features(enabled);
+}
+
+int sal_transport_available(Sal *ctx, SalTransport t) {
+	return ctx->transport_available(t);
+}
+
+const SalErrorInfo *sal_op_get_error_info(const SalOp *op) {
+	return op->get_error_info();
+}
+
+bool_t sal_call_dialog_request_pending(const SalOp *op) {
+	auto callOp = dynamic_cast<const SalCall *>(op);
+	return callOp->dialog_request_pending();
+}
+
+void sal_call_set_sdp_handling(SalOp *h, SalOpSDPHandling handling) {
+	auto callOp = dynamic_cast<SalCall *>(h);
+	callOp->set_sdp_handling(handling);
+}
+
+SalMediaDescription * sal_call_get_final_media_description(SalOp *h) {
+	auto callOp = dynamic_cast<SalCall *>(h);
+	return callOp->get_final_media_description();
 }
