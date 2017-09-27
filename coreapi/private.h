@@ -45,6 +45,7 @@
 #include "carddav.h"
 #include "linphone/player.h"
 #include "account_creator_private.h"
+#include "tester_utils.h"
 
 #include "bctoolbox/port.h"
 #include "bctoolbox/map.h"
@@ -495,11 +496,6 @@ LINPHONE_PUBLIC bool_t linphone_core_symmetric_rtp_enabled(LinphoneCore*lc);
 
 void linphone_core_queue_task(LinphoneCore *lc, belle_sip_source_func_t task_fun, void *data, const char *task_description);
 
-typedef enum _LinphoneProxyConfigAddressComparisonResult{
-	LinphoneProxyConfigAddressDifferent,
-	LinphoneProxyConfigAddressEqual,
-	LinphoneProxyConfigAddressWeakEqual
-} LinphoneProxyConfigAddressComparisonResult;
 
 LINPHONE_PUBLIC LinphoneProxyConfigAddressComparisonResult linphone_proxy_config_address_equal(const LinphoneAddress *a, const LinphoneAddress *b);
 LINPHONE_PUBLIC LinphoneProxyConfigAddressComparisonResult linphone_proxy_config_is_server_config_changed(const LinphoneProxyConfig* obj);

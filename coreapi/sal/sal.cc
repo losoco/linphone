@@ -5,6 +5,7 @@
 #include "message_op.hh"
 #include "bellesip_sal/sal_impl.h"
 #include "tester_utils.h"
+#include "private.h"
 
 using namespace std;
 
@@ -1902,6 +1903,20 @@ int to_sip_code(SalReason r) {
 /* C++ to C wrapping functions */
 /*******************************/
 
+extern "C" {
+
+Sal *linphone_core_get_sal(const LinphoneCore *lc) {
+	return lc->sal;
+}
+
+SalOp *linphone_proxy_config_get_sal_op(const LinphoneProxyConfig *cfg) {
+	return cfg->op;
+}
+
+SalOp *linphone_call_get_op_as_sal_op(const LinphoneCall *call) {
+	return linphone_call_get_op(call);
+}
+
 Sal *sal_init(MSFactory *factory) {
 	return new Sal(factory);
 }
@@ -1987,4 +2002,6 @@ void sal_call_set_sdp_handling(SalOp *h, SalOpSDPHandling handling) {
 SalMediaDescription * sal_call_get_final_media_description(SalOp *h) {
 	auto callOp = dynamic_cast<SalCall *>(h);
 	return callOp->get_final_media_description();
+}
+
 }
