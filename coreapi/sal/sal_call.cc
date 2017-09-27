@@ -199,8 +199,8 @@ int SalCall::extract_sdp(belle_sip_message_t* message,belle_sdp_session_descript
 		*error = SalReasonUnsupportedContent;
 		return -1;
 	}
-
-	*session_desc = belle_sdp_session_description_parse(body->raw_data);
+	
+	*session_desc = belle_sdp_session_description_parse(string(body->raw_data, body->data_length).c_str());
 	sal_custom_body_unref(body);
 	
 	if (*session_desc == NULL) {

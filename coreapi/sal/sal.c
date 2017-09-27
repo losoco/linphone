@@ -219,7 +219,7 @@ SalCustomBody *sal_custom_body_new_with_buffer_copy(SalMimeType *type, const cha
 	body->data_length = data_length;
 	if (data_length > 0 && raw_data) {
 		body->raw_data = bctbx_new(char, data_length);
-		memcpy(&body->raw_data, raw_data, data_length);
+		memcpy(body->raw_data, raw_data, data_length);
 	}
 	return body;
 }
