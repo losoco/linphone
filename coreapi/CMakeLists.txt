@@ -56,15 +56,7 @@ set(LINPHONE_SOURCE_FILES_C
 	authentication.c
 	bellesip_sal/sal_address_impl.c
 	bellesip_sal/sal_impl.c
-	bellesip_sal/sal_op_call.c
-	bellesip_sal/sal_op_call_transfer.c
-	bellesip_sal/sal_op_events.c
 	bellesip_sal/sal_op_impl.c
-	bellesip_sal/sal_op_info.c
-	bellesip_sal/sal_op_message.c
-	bellesip_sal/sal_op_presence.c
-	bellesip_sal/sal_op_publish.c
-	bellesip_sal/sal_op_registration.c
 	bellesip_sal/sal_sdp.c
 	buffer.c
 	callbacks.c
