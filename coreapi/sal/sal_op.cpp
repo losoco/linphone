@@ -1,5 +1,5 @@
 #include <cstring>
-#include "sal_op.hh"
+#include "sal_op.h"
 #include "bellesip_sal/sal_impl.h"
 
 using namespace std;

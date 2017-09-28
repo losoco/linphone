@@ -1,4 +1,4 @@
-#include "register_op.hh"
+#include "register_op.h"
 #include "bellesip_sal/sal_impl.h"
 
 using namespace std;

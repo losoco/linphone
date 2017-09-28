@@ -22,7 +22,7 @@
 #include "object/object-p.h"
 
 #include "call-session.h"
-#include "sal/call_op.hh"
+#include "sal/call_op.h"
 
 // =============================================================================
 

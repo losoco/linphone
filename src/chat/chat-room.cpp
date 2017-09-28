@@ -29,7 +29,7 @@
 
 #include "chat-message.h"
 #include "chat-room.h"
-#include "sal/message_op.hh"
+#include "sal/message_op.h"
 
 // =============================================================================
 

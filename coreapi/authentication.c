@@ -24,7 +24,7 @@
 
 #include "linphone/core.h"
 #include "linphone/lpconfig.h"
-#include "sal/sal.hh"
+#include "sal/sal.hpp"
 
 #include "c-wrapper/c-wrapper.h"
 

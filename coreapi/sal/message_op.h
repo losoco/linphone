@@ -1,8 +1,27 @@
-#ifndef _LINPHONE_SAL_MASSAGE_OP_HH
-#define _LINPHONE_SAL_MASSAGE_OP_HH
+/*
+message_op.h
+Copyright (C) 2017  Belledonne Communications <info@belledonne-communications.com>
 
-#include "sal_op.hh"
-#include "message_op_interface.hh"
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
+#ifndef _SAL_MASSAGE_OP_H_
+#define _SAL_MASSAGE_OP_H_
+
+#include "sal_op.h"
+#include "message_op_interface.h"
 
 class SalMessageOp: public SalOp, public SalMessageOpInterface {
 public:
@@ -22,4 +41,4 @@ private:
 	static void process_request_event_cb(void *op_base, const belle_sip_request_event_t *event);
 };
 
-#endif // _LINPHONE_SAL_MASSAGE_OP_HH
+#endif

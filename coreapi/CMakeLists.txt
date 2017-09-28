@@ -119,13 +119,13 @@ set(LINPHONE_SOURCE_FILES_C
 )
 set(LINPHONE_SOURCE_FILES_CXX
 	conference.cc
-	sal/call_op.cc
-	sal/event_op.cc
-	sal/message_op.cc
-	sal/presence_op.cc
-	sal/register_op.cc
-	sal/sal.cc
-	sal/sal_op.cc
+	sal/call_op.cpp
+	sal/event_op.cpp
+	sal/message_op.cpp
+	sal/presence_op.cpp
+	sal/register_op.cpp
+	sal/sal.cpp
+	sal/sal_op.cpp
 	tester_utils.cpp
 )
 set(LINPHONE_INCLUDE_DIRS ${LINPHONE_INCLUDE_DIRS})
