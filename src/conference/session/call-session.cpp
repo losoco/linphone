@@ -334,9 +334,9 @@ bool CallSessionPrivate::failure () {
 			setState(LinphoneCallEnd, "Call declined");
 		else {
 			if (linphone_call_state_is_early(state))
-				setState(LinphoneCallError, ei->full_string);
+				setState(LinphoneCallError, ei->full_string ? ei->full_string : "");
 			else
-				setState(LinphoneCallEnd, ei->full_string);
+				setState(LinphoneCallEnd, ei->full_string ? ei->full_string : "");
 		}
 #if 0 // TODO: handle in Call class
 		if (ei->reason != SalReasonNone)

@@ -77,6 +77,7 @@ void RegisterOp::register_refresher_listener(belle_sip_refresher_t* refresher, v
 			if((gruu = belle_sip_parameters_get_parameter(p, "pub-gruu"))) {
 				char *unquoted = belle_sip_unquote_strdup(gruu);
 				op->set_contact_address((SalAddress*)belle_sip_header_address_parse(unquoted));
+				bctbx_free(unquoted);
 				belle_sip_parameters_remove_parameter(p, "pub-gruu");
 			} else {
 				op->set_contact_address((SalAddress*)(BELLE_SIP_HEADER_ADDRESS(contact))); /*update contact with real value*/
