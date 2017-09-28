@@ -29,7 +29,7 @@ public:
 
 class SalSubscribeOp: public SalEventOp {
 public:
-		SalSubscribeOp(Sal *sal): SalEventOp(sal) {}
+	SalSubscribeOp(Sal *sal): SalEventOp(sal) {}
 	
 	int subscribe(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler);
 	int unsubscribe() {return SalOp::unsubscribe();}

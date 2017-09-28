@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 class SalCallOp: public SalOp, public SalMessageOpInterface {
 public:
-		SalCallOp(Sal *sal): SalOp(sal) {}
+	SalCallOp(Sal *sal): SalOp(sal) {}
 	
 	int set_local_media_description(SalMediaDescription *desc);
 	int set_local_custom_body(SalCustomBody *body);

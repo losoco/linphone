@@ -30,50 +30,72 @@ class SalOp {
 public:
 	SalOp(Sal *sal);
 	virtual ~SalOp();
+	
 	SalOp *ref();
 	void *unref();
+	
+	Sal *get_sal() const {return this->root;}
+	
 	void set_user_pointer(void *up) {this->user_pointer=up;}
 	void *get_user_pointer() const {return this->user_pointer;}
 	
-	void set_contact_address(const SalAddress* address);
-	void set_route(const char *route);
-	void set_route_address(const SalAddress* address);
-	void add_route_address(const SalAddress* address);
-	void set_realm(const char *realm);
+	
 	void set_from(const char *from);
 	void set_from_address(const SalAddress *from);
-	void set_to(const char *to);
-	void set_to_address(const SalAddress *to);
-	void set_diversion_address(const SalAddress *diversion);
-	void set_service_route(const SalAddress* service_route);
-	void set_manual_refresher_mode(bool_t enabled) {this->manual_refresher=enabled;}
-	void set_entity_tag(const char* entity_tag);
-	void set_event(const char *eventname);
-	void set_privacy(SalPrivacyMask privacy) {this->privacy=privacy;}
-	void set_sent_custom_header(SalCustomHeader* ch);
-	
 	const char *get_from() const {return this->from;}
 	const SalAddress *get_from_address() const {return this->from_address;}
+	
+	void set_to(const char *to);
+	void set_to_address(const SalAddress *to);
 	const char *get_to() const {return this->to;}
 	const SalAddress *get_to_address() const {return this->to_address;}
-	const SalAddress *get_diversion_address() const {return this->diversion_address;}
+	
+	void set_contact_address(const SalAddress* address);
 	const SalAddress *get_contact_address() const {return this->contact_address;}
+	
+	void set_route(const char *route);
+	void set_route_address(const SalAddress* address);
 	const bctbx_list_t *get_route_addresses() const {return this->route_addresses;}
+	void add_route_address(const SalAddress* address);
+	
+	void set_diversion_address(const SalAddress *diversion);
+	const SalAddress *get_diversion_address() const {return this->diversion_address;}
+	
+	void set_service_route(const SalAddress* service_route);
+	const SalAddress *get_service_route() const {return this->service_route;}
+	
+	void set_manual_refresher_mode(bool_t enabled) {this->manual_refresher=enabled;}
+	
+	void set_entity_tag(const char* entity_tag);
+	const char *get_entity_tag() const {return this->entity_tag;}
+	
+	void set_event(const char *eventname);
+	
+	void set_privacy(SalPrivacyMask privacy) {this->privacy=privacy;}
+	SalPrivacyMask get_privacy() const {return this->privacy;}
+	
+	void set_realm(const char *realm);
+	
+	void set_sent_custom_header(SalCustomHeader* ch);
+	
+	void enable_cnx_ip_to_0000_if_sendonly(bool_t yesno) {this->_cnx_ip_to_0000_if_sendonly_enabled = yesno;}
+	bool_t cnx_ip_to_0000_if_sendonly_enabled() const {return this->_cnx_ip_to_0000_if_sendonly_enabled;}
+	
 	const char *get_proxy() const {return this->route;}
-	const char *get_remote_contact() const {return this->remote_contact;}
-	const SalAddress *get_remote_contact_address() const {return this->remote_contact_address;}
 	const char *get_network_origin() const {return this->origin;}
-	const char *get_remote_ua() const {return this->remote_ua;}
 	const char* get_call_id() const {return  this->call_id;}
 	char* get_dialog_id() const;
-	const SalAddress *get_service_route() const {return this->service_route;}
 	int get_address_family() const;
-	const char *get_entity_tag() const {return this->entity_tag;}
-	SalPrivacyMask get_privacy() const {return this->privacy;}
+	const SalCustomHeader *get_recv_custom_header() const {return this->recv_custom_headers;}
+	const char *get_remote_contact() const {return this->remote_contact;}
+	const SalAddress *get_remote_contact_address() const {return this->remote_contact_address;}
+	const char *get_remote_ua() const {return this->remote_ua;}
+	
+	const char *get_public_address(int *port) {return this->refresher ? belle_sip_refresher_get_public_address(this->refresher, port) : NULL;}
+	const char *get_local_address(int *port) {return this->refresher ? belle_sip_refresher_get_local_address(this->refresher, port) : NULL;}
+	
 	const SalErrorInfo *get_error_info() const {return &this->error_info;}
 	const SalErrorInfo *get_reason_error_info() const {return &this->reason_error_info;}
-	const SalCustomHeader *get_recv_custom_header() const {return this->recv_custom_headers;}
-	Sal *get_sal() const {return this->root;}
 	
 	bool_t is_forked_of(const SalOp *op2) const {return this->call_id && op2->call_id && strcmp(this->call_id, op2->call_id) == 0;}
 	bool_t is_idle() const ;
@@ -89,12 +111,6 @@ public:
 	
 	int ping(const char *from, const char *to);
 	int send_info(const char *from, const char *to, const SalBodyHandler *body_handler);
-	
-	const char *get_public_address(int *port) {return this->refresher ? belle_sip_refresher_get_public_address(this->refresher, port) : NULL;}
-	const char *get_local_address(int *port) {return this->refresher ? belle_sip_refresher_get_local_address(this->refresher, port) : NULL;}
-	
-	void enable_cnx_ip_to_0000_if_sendonly(bool_t yesno) {this->_cnx_ip_to_0000_if_sendonly_enabled = yesno;}
-	bool_t cnx_ip_to_0000_if_sendonly_enabled() const {return this->_cnx_ip_to_0000_if_sendonly_enabled;}
 	
 protected:
 	enum class State {
@@ -125,7 +141,7 @@ protected:
 	
 	typedef void (*ReleaseCb)(SalOp *op);
 	
-	virtual void fill_cbs() {};
+	virtual void fill_cbs() {}
 	void release_impl();
 	void process_authentication();
 	
