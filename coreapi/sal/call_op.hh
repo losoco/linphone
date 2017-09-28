@@ -1,5 +1,5 @@
-#ifndef _LINPHONE_SAL_CALL_HH
-#define _LINPHONE_SAL_CALL_HH
+#ifndef _LINPHONE_SAL_CALL_OP_HH_
+#define _LINPHONE_SAL_CALL_OP_HH_
 
 #include "sal.hh"
 #include "message_op_interface.hh"

@@ -123,7 +123,7 @@ set(LINPHONE_SOURCE_FILES_CXX
 	sal/message_op.cc
 	sal/presence_op.cc
 	sal/register_op.cc
-	sal/sal_call.cc
+	sal/call_op.cc
 	sal/sal.cc
 	tester_utils.cpp
 )

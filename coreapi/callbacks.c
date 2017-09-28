@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 #include "sal/sal.h"
-#include "sal/sal.hh"
-#include "sal/sal_call.hh"
+#include "sal/call_op.hh"
 #include "sal/message_op.hh"
 
 #include "linphone/core.h"
