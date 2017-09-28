@@ -2,7 +2,7 @@
 
 using namespace std;
 
-void MessageOp::process_error() {
+void SalMessageOp::process_error() {
 	if (this->dir == Dir::Outgoing) {
 		this->root->callbacks.message_delivery_update(this, SalMessageDeliveryFailed);
 	} else {
@@ -11,14 +11,14 @@ void MessageOp::process_error() {
 	this->state=State::Terminated;
 }
 
-void MessageOp::process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event) {
-	MessageOp* op = (MessageOp*)user_ctx;
+void SalMessageOp::process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event) {
+	SalMessageOp * op = (SalMessageOp *)user_ctx;
 	sal_error_info_set(&op->error_info,SalReasonIOError, "SIP", 503,"IO Error",NULL);
 	op->process_error();
 }
 
-void MessageOp::process_response_event_cb(void *op_base, const belle_sip_response_event_t *event) {
-	MessageOp* op = (MessageOp*)op_base;
+void SalMessageOp::process_response_event_cb(void *op_base, const belle_sip_response_event_t *event) {
+	SalMessageOp * op = (SalMessageOp *)op_base;
 	int code = belle_sip_response_get_status_code(belle_sip_response_event_get_response(event));
 	SalMessageDeliveryStatus status;
 	op->set_error_info_from_response(belle_sip_response_event_get_response(event));
@@ -33,18 +33,18 @@ void MessageOp::process_response_event_cb(void *op_base, const belle_sip_respons
 	op->root->callbacks.message_delivery_update(op,status);
 }
 
-void MessageOp::process_timeout_cb(void *user_ctx, const belle_sip_timeout_event_t *event) {
-	MessageOp* op=(MessageOp*)user_ctx;
+void SalMessageOp::process_timeout_cb(void *user_ctx, const belle_sip_timeout_event_t *event) {
+	SalMessageOp * op=(SalMessageOp *)user_ctx;
 	sal_error_info_set(&op->error_info,SalReasonRequestTimeout, "SIP", 408,"Request timeout",NULL);
 	op->process_error();
 }
 
-void MessageOp::process_request_event_cb(void *op_base, const belle_sip_request_event_t *event) {
-	MessageOp* op = (MessageOp*)op_base;
+void SalMessageOp::process_request_event_cb(void *op_base, const belle_sip_request_event_t *event) {
+	SalMessageOp * op = (SalMessageOp *)op_base;
 	op->process_incoming_message(event);
 }
 
-void MessageOp::fill_cbs() {
+void SalMessageOp::fill_cbs() {
 	static belle_sip_listener_callbacks_t op_message_callbacks = {0};
 	if (op_message_callbacks.process_io_error==NULL) {
 		op_message_callbacks.process_io_error=process_io_error_cb;
@@ -56,7 +56,7 @@ void MessageOp::fill_cbs() {
 	this->type=Type::Message;
 }
 
-void MessageOpInterface::prepare_message_request(belle_sip_request_t *req, const char* content_type, const char *msg, const char *peer_uri) {
+void SalMessageOpInterface::prepare_message_request(belle_sip_request_t *req, const char* content_type, const char *msg, const char *peer_uri) {
 	char content_type_raw[256];
 	size_t content_length = msg?strlen(msg):0;
 	time_t curtime = ms_time(NULL);
@@ -70,7 +70,7 @@ void MessageOpInterface::prepare_message_request(belle_sip_request_t *req, const
 	}
 }
 
-int MessageOp::send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) {
+int SalMessageOp::send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) {
 	fill_cbs();
 	if (from) set_from(from);
 	if (to) set_to(to);

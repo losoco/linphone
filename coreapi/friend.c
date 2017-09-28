@@ -188,7 +188,7 @@ void __linphone_friend_do_subscribe(LinphoneFriend *fr){
 			fr->outsub->release();
 			fr->outsub=NULL;
 		}
-		fr->outsub=new PresenceOp(lc->sal);
+		fr->outsub=new SalPresenceOp(lc->sal);
 		linphone_configure_op(lc,fr->outsub,addr,NULL,TRUE);
 		fr->outsub->subscribe(NULL,NULL,lp_config_get_int(lc->config,"sip","subscribe_expires",600));
 		fr->subscribe_active=TRUE;
@@ -468,7 +468,7 @@ void linphone_friend_notify(LinphoneFriend *lf, LinphonePresenceModel *presence)
 		}
 	}
 	for(elem=lf->insubs; elem!=NULL; elem=bctbx_list_next(elem)){
-		auto op = reinterpret_cast<PresenceOp *>(bctbx_list_get_data(elem));
+		auto op = reinterpret_cast<SalPresenceOp *>(bctbx_list_get_data(elem));
 		op->notify_presence((SalPresenceModel *)presence);
 	}
 }
@@ -521,7 +521,7 @@ void linphone_friend_invalidate_subscription(LinphoneFriend *lf){
 	lf->initial_subscribes_sent=FALSE;
 }
 
-static void close_presence_notification(PresenceOp *op) {
+static void close_presence_notification(SalPresenceOp *op) {
     op->notify_presence_close();
 }
 

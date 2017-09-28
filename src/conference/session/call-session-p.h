@@ -40,7 +40,7 @@ public:
 	void setPingTime (int value) { pingTime = value; }
 
 	LinphoneProxyConfig * getDestProxy () const { return destProxy; }
-	SalCall * getOp () const { return op; }
+	SalCallOp * getOp () const { return op; }
 
 	virtual void abort (const std::string &errorMsg);
 	virtual void accepted ();
@@ -93,7 +93,7 @@ protected:
 	LinphoneErrorInfo *ei = nullptr;
 	LinphoneCallLog *log = nullptr;
 
-	SalCall *op = nullptr;
+	SalCallOp *op = nullptr;
 
 	SalOp *pingOp = nullptr;
 	bool pingReplied = false;

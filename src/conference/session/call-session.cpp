@@ -620,7 +620,7 @@ void CallSessionPrivate::createOpTo (const LinphoneAddress *to) {
 	L_Q();
 	if (op)
 		op->release();
-	op = new SalCall(core->sal);
+	op = new SalCallOp(core->sal);
 	op->set_user_pointer(q);
 #if 0
 	if (linphone_call_params_get_referer(call->params))
@@ -689,7 +689,7 @@ LinphoneStatus CallSession::acceptUpdate (const CallSessionParams *csp) {
 	return d->acceptUpdate(csp, d->prevState, linphone_call_state_to_string(d->prevState));
 }
 
-void CallSession::configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalCall *op, const Address &from, const Address &to) {
+void CallSession::configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalCallOp *op, const Address &from, const Address &to) {
 	L_D();
 	d->direction = direction;
 	d->destProxy = cfg;

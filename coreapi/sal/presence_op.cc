@@ -2,8 +2,8 @@
 
 using namespace std;
 
-void PresenceOp::presence_process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event) {
-	PresenceOp* op = (PresenceOp*)user_ctx;
+void SalPresenceOp::presence_process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event) {
+	SalPresenceOp * op = (SalPresenceOp *)user_ctx;
 	belle_sip_request_t* request;
 	belle_sip_client_transaction_t* client_transaction = NULL;
 	
@@ -28,8 +28,8 @@ void PresenceOp::presence_process_io_error_cb(void *user_ctx, const belle_sip_io
 	}
 }
 
-void PresenceOp::presence_refresher_listener_cb(belle_sip_refresher_t* refresher, void* user_pointer, unsigned int status_code, const char* reason_phrase, int will_retry) {
-	PresenceOp* op = (PresenceOp*)user_pointer;
+void SalPresenceOp::presence_refresher_listener_cb(belle_sip_refresher_t* refresher, void* user_pointer, unsigned int status_code, const char* reason_phrase, int will_retry) {
+	SalPresenceOp * op = (SalPresenceOp *)user_pointer;
 	if (status_code >= 300) {
 		ms_message("The SUBSCRIBE dialog no longer works. Let's restart a new one.");
 		belle_sip_refresher_stop(op->refresher);
@@ -56,8 +56,8 @@ void PresenceOp::presence_refresher_listener_cb(belle_sip_refresher_t* refresher
 	}
 }
 
-void PresenceOp::presence_response_event_cb(void *op_base, const belle_sip_response_event_t *event) {
-	PresenceOp* op = (PresenceOp*)op_base;
+void SalPresenceOp::presence_response_event_cb(void *op_base, const belle_sip_response_event_t *event) {
+	SalPresenceOp * op = (SalPresenceOp *)op_base;
 	belle_sip_dialog_state_t dialog_state;
 	belle_sip_client_transaction_t* client_transaction = belle_sip_response_event_get_client_transaction(event);
 	belle_sip_response_t* response=belle_sip_response_event_get_response(event);
@@ -112,8 +112,8 @@ void PresenceOp::presence_response_event_cb(void *op_base, const belle_sip_respo
 	}
 }
 
-void PresenceOp::presence_process_timeout_cb(void *user_ctx, const belle_sip_timeout_event_t *event) {
-	PresenceOp* op = (PresenceOp*)user_ctx;
+void SalPresenceOp::presence_process_timeout_cb(void *user_ctx, const belle_sip_timeout_event_t *event) {
+	SalPresenceOp * op = (SalPresenceOp *)user_ctx;
 	belle_sip_client_transaction_t* client_transaction = belle_sip_timeout_event_get_client_transaction(event);
 	belle_sip_request_t* request;
 	
@@ -129,11 +129,11 @@ void PresenceOp::presence_process_timeout_cb(void *user_ctx, const belle_sip_tim
 	}
 }
 
-void PresenceOp::presence_process_transaction_terminated_cb(void *user_ctx, const belle_sip_transaction_terminated_event_t *event) {
+void SalPresenceOp::presence_process_transaction_terminated_cb(void *user_ctx, const belle_sip_transaction_terminated_event_t *event) {
 	ms_message("presence_process_transaction_terminated not implemented yet");
 }
 
-SalPresenceModel *PresenceOp::process_presence_notification(belle_sip_request_t *req) {
+SalPresenceModel *SalPresenceOp::process_presence_notification(belle_sip_request_t *req) {
 	belle_sip_header_content_type_t *content_type = belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(req), belle_sip_header_content_type_t);
 	belle_sip_header_content_length_t *content_length = belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(req), belle_sip_header_content_length_t);
 	const char *body = belle_sip_message_get_body(BELLE_SIP_MESSAGE(req));
@@ -156,7 +156,7 @@ SalPresenceModel *PresenceOp::process_presence_notification(belle_sip_request_t 
 	return result;
 }
 
-void PresenceOp::handle_notify(belle_sip_request_t *req, belle_sip_dialog_t *dialog) {
+void SalPresenceOp::handle_notify(belle_sip_request_t *req, belle_sip_dialog_t *dialog) {
 	belle_sip_response_t* resp=NULL;
 	belle_sip_server_transaction_t* server_transaction= this->pending_server_trans;
 	belle_sip_header_subscription_state_t* subscription_state_header=belle_sip_message_get_header_by_type(req,belle_sip_header_subscription_state_t);
@@ -192,8 +192,8 @@ void PresenceOp::handle_notify(belle_sip_request_t *req, belle_sip_dialog_t *dia
 	}
 }
 
-void PresenceOp::presence_process_request_event_cb(void *op_base, const belle_sip_request_event_t *event) {
-	PresenceOp* op = (PresenceOp*)op_base;
+void SalPresenceOp::presence_process_request_event_cb(void *op_base, const belle_sip_request_event_t *event) {
+	SalPresenceOp * op = (SalPresenceOp *)op_base;
 	belle_sip_server_transaction_t* server_transaction = belle_sip_provider_create_server_transaction(op->root->prov,belle_sip_request_event_get_request(event));
 	belle_sip_request_t* req = belle_sip_request_event_get_request(event);
 	belle_sip_dialog_state_t dialog_state;
@@ -269,8 +269,8 @@ void PresenceOp::presence_process_request_event_cb(void *op_base, const belle_si
 	}
 }
 
-void PresenceOp::presence_process_dialog_terminated_cb(void *ctx, const belle_sip_dialog_terminated_event_t *event) {
-	PresenceOp* op= (PresenceOp*)ctx;
+void SalPresenceOp::presence_process_dialog_terminated_cb(void *ctx, const belle_sip_dialog_terminated_event_t *event) {
+	SalPresenceOp * op= (SalPresenceOp *)ctx;
 	if (op->dialog && belle_sip_dialog_is_server(op->dialog)) {
 			ms_message("Incoming subscribtion from [%s] terminated",op->get_from());
 			if (!op->op_released){
@@ -280,8 +280,8 @@ void PresenceOp::presence_process_dialog_terminated_cb(void *ctx, const belle_si
 	}/* else client dialog is managed by refresher*/
 }
 
-void PresenceOp::_release_cb(SalOp *op_base) {
-	PresenceOp *op =(PresenceOp*)op_base;
+void SalPresenceOp::_release_cb(SalOp *op_base) {
+	SalPresenceOp *op =(SalPresenceOp *)op_base;
 	if(op->refresher) {
 		belle_sip_refresher_stop(op->refresher);
 		belle_sip_object_unref(op->refresher);
@@ -290,7 +290,7 @@ void PresenceOp::_release_cb(SalOp *op_base) {
 	}
 }
 
-void PresenceOp::fill_cbs() {
+void SalPresenceOp::fill_cbs() {
 	static belle_sip_listener_callbacks_t op_presence_callbacks={0};
 	if (op_presence_callbacks.process_request_event==NULL){
 		op_presence_callbacks.process_io_error=presence_process_io_error_cb;
@@ -305,7 +305,7 @@ void PresenceOp::fill_cbs() {
 	this->release_cb=_release_cb;
 }
 
-int PresenceOp::subscribe(const char *from, const char *to, int expires) {
+int SalPresenceOp::subscribe(const char *from, const char *to, int expires) {
 	belle_sip_request_t *req=NULL;
 	if (from)
 		set_from(from);
@@ -339,7 +339,7 @@ int PresenceOp::subscribe(const char *from, const char *to, int expires) {
 	return send_request(req);
 }
 
-int PresenceOp::check_dialog_state() {
+int SalPresenceOp::check_dialog_state() {
 	belle_sip_dialog_state_t state= this->dialog?belle_sip_dialog_get_state(this->dialog): BELLE_SIP_DIALOG_NULL;
 	if (state != BELLE_SIP_DIALOG_CONFIRMED) {
 		ms_warning("Cannot notify presence for op [%p] because dialog in state [%s]", this, belle_sip_dialog_state_to_string(state));
@@ -348,7 +348,7 @@ int PresenceOp::check_dialog_state() {
 		return 0;
 }
 
-belle_sip_request_t *PresenceOp::create_presence_notify() {
+belle_sip_request_t *SalPresenceOp::create_presence_notify() {
 	belle_sip_request_t* notify=belle_sip_dialog_create_queued_request(this->dialog,"NOTIFY");
 	if (!notify) return NULL;
 
@@ -356,7 +356,7 @@ belle_sip_request_t *PresenceOp::create_presence_notify() {
 	return notify;
 }
 
-void PresenceOp::add_presence_info(belle_sip_message_t *notify, SalPresenceModel *presence) {
+void SalPresenceOp::add_presence_info(belle_sip_message_t *notify, SalPresenceModel *presence) {
 	char *contact_info;
 	char *content = NULL;
 	size_t content_length;
@@ -383,7 +383,7 @@ void PresenceOp::add_presence_info(belle_sip_message_t *notify, SalPresenceModel
 	}
 }
 
-int PresenceOp::notify_presence(SalPresenceModel *presence) {
+int SalPresenceOp::notify_presence(SalPresenceModel *presence) {
 	belle_sip_request_t* notify=NULL;
 	if (check_dialog_state()) {
 		return -1;
@@ -397,7 +397,7 @@ int PresenceOp::notify_presence(SalPresenceModel *presence) {
 	return send_request(notify);
 }
 
-int PresenceOp::notify_presence_close() {
+int SalPresenceOp::notify_presence_close() {
 	belle_sip_request_t* notify=NULL;
 	int status;
 	if (check_dialog_state()) {
@@ -414,7 +414,7 @@ int PresenceOp::notify_presence_close() {
 	return status;
 }
 
-SalSubscribeStatus PresenceOp::belle_sip_message_get_subscription_state(const belle_sip_message_t *msg) {
+SalSubscribeStatus SalPresenceOp::belle_sip_message_get_subscription_state(const belle_sip_message_t *msg) {
 	belle_sip_header_subscription_state_t* subscription_state_header=belle_sip_message_get_header_by_type(msg,belle_sip_header_subscription_state_t);
 	SalSubscribeStatus sss=SalSubscribeNone;
 	if (subscription_state_header){

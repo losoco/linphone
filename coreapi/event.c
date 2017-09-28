@@ -79,7 +79,7 @@ static void linphone_event_release(LinphoneEvent *lev){
 	linphone_event_unref(lev);
 }
 
-static LinphoneEvent * linphone_event_new_base(LinphoneCore *lc, LinphoneSubscriptionDir dir, const char *name, EventOp *op){
+static LinphoneEvent * linphone_event_new_base(LinphoneCore *lc, LinphoneSubscriptionDir dir, const char *name, SalEventOp *op){
 	LinphoneEvent *lev=belle_sip_object_new(LinphoneEvent);
 	lev->lc=lc;
 	lev->dir=dir;
@@ -90,22 +90,22 @@ static LinphoneEvent * linphone_event_new_base(LinphoneCore *lc, LinphoneSubscri
 }
 
 LinphoneEvent *linphone_event_new(LinphoneCore *lc, LinphoneSubscriptionDir dir, const char *name, int expires){
-	LinphoneEvent *lev=linphone_event_new_base(lc, dir, name, new SubscribeOp(lc->sal));
+	LinphoneEvent *lev=linphone_event_new_base(lc, dir, name, new SalSubscribeOp(lc->sal));
 	lev->expires=expires;
 	return lev;
 }
 
-static LinphoneEvent *linphone_event_new_with_op_base(LinphoneCore *lc, EventOp *op, LinphoneSubscriptionDir dir, const char *name, bool_t is_out_of_dialog){
+static LinphoneEvent *linphone_event_new_with_op_base(LinphoneCore *lc, SalEventOp *op, LinphoneSubscriptionDir dir, const char *name, bool_t is_out_of_dialog){
 	LinphoneEvent *lev=linphone_event_new_base(lc, dir, name, op);
 	lev->is_out_of_dialog_op=is_out_of_dialog;
 	return lev;
 }
 
-LinphoneEvent *linphone_event_new_with_op(LinphoneCore *lc, EventOp *op, LinphoneSubscriptionDir dir, const char *name) {
+LinphoneEvent *linphone_event_new_with_op(LinphoneCore *lc, SalEventOp *op, LinphoneSubscriptionDir dir, const char *name) {
 	return linphone_event_new_with_op_base(lc,op,dir,name,FALSE);
 }
 
-LinphoneEvent *linphone_event_new_with_out_of_dialog_op(LinphoneCore *lc, EventOp *op, LinphoneSubscriptionDir dir, const char *name) {
+LinphoneEvent *linphone_event_new_with_out_of_dialog_op(LinphoneCore *lc, SalEventOp *op, LinphoneSubscriptionDir dir, const char *name) {
 	return linphone_event_new_with_op_base(lc,op,dir,name,TRUE);
 }
 
@@ -223,7 +223,7 @@ LinphoneStatus linphone_event_send_subscribe(LinphoneEvent *lev, const LinphoneC
 	}else lev->op->set_sent_custom_header(NULL);
 
 	body_handler = sal_body_handler_from_content(body);
-    auto subscribeOp = dynamic_cast<SubscribeOp *>(lev->op);
+    auto subscribeOp = dynamic_cast<SalSubscribeOp *>(lev->op);
 	err=subscribeOp->subscribe(NULL,NULL,lev->name,lev->expires,body_handler);
 	if (err==0){
 		if (lev->subscription_state==LinphoneSubscriptionNone)
@@ -246,7 +246,7 @@ LinphoneStatus linphone_event_accept_subscription(LinphoneEvent *lev){
 		ms_error("linphone_event_accept_subscription(): cannot accept subscription if subscription wasn't just received.");
 		return -1;
 	}
-	auto subscribeOp = dynamic_cast<SubscribeOp *>(lev->op);
+	auto subscribeOp = dynamic_cast<SalSubscribeOp *>(lev->op);
 	err=subscribeOp->accept();
 	if (err==0){
 		linphone_event_set_state(lev,LinphoneSubscriptionActive);
@@ -260,7 +260,7 @@ LinphoneStatus linphone_event_deny_subscription(LinphoneEvent *lev, LinphoneReas
 		ms_error("linphone_event_deny_subscription(): cannot deny subscription if subscription wasn't just received.");
 		return -1;
 	}
-    auto subscribeOp = dynamic_cast<SubscribeOp *>(lev->op);
+    auto subscribeOp = dynamic_cast<SalSubscribeOp *>(lev->op);
 	err=subscribeOp->decline(linphone_reason_to_sal(reason));
 	linphone_event_set_state(lev,LinphoneSubscriptionTerminated);
 	return err;
@@ -277,7 +277,7 @@ LinphoneStatus linphone_event_notify(LinphoneEvent *lev, const LinphoneContent *
 		return -1;
 	}
 	body_handler = sal_body_handler_from_content(body);
-    auto subscribeOp = dynamic_cast<SubscribeOp *>(lev->op);
+    auto subscribeOp = dynamic_cast<SalSubscribeOp *>(lev->op);
 	return subscribeOp->notify(body_handler);
 }
 
@@ -330,7 +330,7 @@ static int _linphone_event_send_publish(LinphoneEvent *lev, const LinphoneConten
 		lev->send_custom_headers=NULL;
 	}else lev->op->set_sent_custom_header(NULL);
 	body_handler = sal_body_handler_from_content(body);
-    auto publishOp = dynamic_cast<PublishOp *>(lev->op);
+    auto publishOp = dynamic_cast<SalPublishOp *>(lev->op);
 	err=publishOp->publish(NULL,NULL,lev->name,lev->expires,body_handler);
 	if (err==0){
 		linphone_event_set_publish_state(lev,LinphonePublishProgress);
@@ -369,7 +369,7 @@ void linphone_event_pause_publish(LinphoneEvent *lev) {
 void linphone_event_unpublish(LinphoneEvent *lev) {
 	lev->terminating = TRUE; /* needed to get clear event*/
 	if (lev->op) {
-        auto op = dynamic_cast<PublishOp *>(lev->op);
+        auto op = dynamic_cast<SalPublishOp *>(lev->op);
         op->unpublish();
     }
 }
@@ -403,16 +403,16 @@ void linphone_event_terminate(LinphoneEvent *lev){
 
 	lev->terminating=TRUE;
 	if (lev->dir==LinphoneSubscriptionIncoming){
-        auto op = dynamic_cast<SubscribeOp *>(lev->op);
+        auto op = dynamic_cast<SalSubscribeOp *>(lev->op);
 		op->close_notify();
 	}else if (lev->dir==LinphoneSubscriptionOutgoing){
-        auto op = dynamic_cast<SubscribeOp *>(lev->op);
+        auto op = dynamic_cast<SalSubscribeOp *>(lev->op);
 		op->unsubscribe();
 	}
 
 	if (lev->publish_state!=LinphonePublishNone){
 		if (lev->publish_state==LinphonePublishOk && lev->expires!=-1){
-            auto op = dynamic_cast<PublishOp *>(lev->op);
+            auto op = dynamic_cast<SalPublishOp *>(lev->op);
 			op->unpublish();
 		}
 		linphone_event_set_publish_state(lev,LinphonePublishCleared);

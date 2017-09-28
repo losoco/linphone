@@ -1540,7 +1540,7 @@ void linphone_core_notify_all_friends(LinphoneCore *lc, LinphonePresenceModel *p
 	}
 }
 
-void linphone_subscription_new(LinphoneCore *lc, SubscribeOp *op, const char *from){
+void linphone_subscription_new(LinphoneCore *lc, SalSubscribeOp *op, const char *from){
 	LinphoneFriend *lf=NULL;
 	char *tmp;
 	LinphoneAddress *uri;

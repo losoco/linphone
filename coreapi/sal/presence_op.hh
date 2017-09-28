@@ -3,9 +3,9 @@
 
 #include "event_op.hh"
 
-class PresenceOp: public SubscribeOp {
+class SalPresenceOp: public SalSubscribeOp {
 public:
-	PresenceOp(Sal *sal): SubscribeOp(sal) {}
+		SalPresenceOp(Sal *sal): SalSubscribeOp(sal) {}
 	
 	int subscribe(const char *from, const char *to, int expires);
     int unsubscribe() {return SalOp::unsubscribe();}

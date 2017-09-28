@@ -119,7 +119,7 @@ void ChatRoomPrivate::sendImdn (const string &content, LinphoneReason reason) {
 		identity = linphone_core_get_primary_contact(core);
 
 	/* Sending out of call */
-	MessageOp *op = new MessageOp(core->sal);
+	SalMessageOp *op = new SalMessageOp(core->sal);
 	linphone_configure_op(core, op, peer, nullptr, !!lp_config_get_int(core->config, "sip", "chat_msg_with_contact", 0));
 	LinphoneChatMessage *msg = q->createMessage(content);
 	LinphoneAddress *fromAddr = linphone_address_new(identity);
@@ -208,7 +208,7 @@ void ChatRoomPrivate::sendIsComposingNotification () {
 			identity = linphone_core_get_primary_contact(core);
 
 		/* Sending out of call */
-		MessageOp *op = new MessageOp(core->sal);
+		SalMessageOp *op = new SalMessageOp(core->sal);
 		linphone_configure_op(core, op, peer, nullptr, !!lp_config_get_int(core->config, "sip", "chat_msg_with_contact", 0));
 		string content = isComposingHandler.marshal(isComposing);
 		if (!content.empty()) {
@@ -851,7 +851,7 @@ void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
 
 		if (!op) {
 			/* Sending out of call */
-			linphone_chat_message_set_sal_op(msg, op = new MessageOp(d->core->sal));
+			linphone_chat_message_set_sal_op(msg, op = new SalMessageOp(d->core->sal));
 			linphone_configure_op(
 				d->core, op, peer, linphone_chat_message_get_sal_custom_headers(msg),
 				!!lp_config_get_int(d->core->config, "sip", "chat_msg_with_contact", 0)
@@ -870,11 +870,11 @@ void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
 
 		if (linphone_chat_message_get_external_body_url(msg)) {
 			char *content_type = ms_strdup_printf("message/external-body; access-type=URL; URL=\"%s\"", linphone_chat_message_get_external_body_url(msg));
-			auto msgOp = dynamic_cast<MessageOpInterface *>(op);
+			auto msgOp = dynamic_cast<SalMessageOpInterface *>(op);
 			msgOp->send_message(identity.c_str(), d->peerAddress.asString().c_str(), content_type, nullptr, nullptr);
 			ms_free(content_type);
 		} else {
-			auto msgOp = dynamic_cast<MessageOpInterface *>(op);
+			auto msgOp = dynamic_cast<SalMessageOpInterface *>(op);
 			if (linphone_chat_message_get_content_type(msg)) {
 				msgOp->send_message(identity.c_str(), d->peerAddress.asString().c_str(), linphone_chat_message_get_content_type(msg), linphone_chat_message_get_text(msg), d->peerAddress.asStringUriOnly().c_str());
 			} else {

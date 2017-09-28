@@ -4,14 +4,14 @@
 #include "sal/sal.h"
 
 class SalOp;
-class SalCall;
-class MessageOp;
-class SubscribeOp;
-class PresenceOp;
+class SalCallOp;
+class SalMessageOp;
+class SalSubscribeOp;
+class SalPresenceOp;
 
 class Sal{
 public:
-	typedef void (*OnCallReceivedCb)(SalCall *op);
+	typedef void (*OnCallReceivedCb)(SalCallOp *op);
 	typedef void (*OnCallRingingCb)(SalOp *op);
 	typedef void (*OnCallAcceptedCb)(SalOp *op);
 	typedef void (*OnCallAckReceivedCb)(SalOp *op, SalCustomHeader *ack);
@@ -33,14 +33,14 @@ public:
 	typedef void (*OnMessageDeliveryUpdateCb)(SalOp *op, SalMessageDeliveryStatus);
 	typedef void (*OnNotifyReferCb)(SalOp *op, SalReferStatus state);
 	typedef void (*OnSubscribeResponseCb)(SalOp *op, SalSubscribeStatus status, int will_retry);
-	typedef void (*OnNotifyCb)(SubscribeOp *op, SalSubscribeStatus status, const char *event, SalBodyHandler *body);
-	typedef void (*OnSubscribeReceivedCb)(SubscribeOp *salop, const char *event, const SalBodyHandler *body);
+	typedef void (*OnNotifyCb)(SalSubscribeOp *op, SalSubscribeStatus status, const char *event, SalBodyHandler *body);
+	typedef void (*OnSubscribeReceivedCb)(SalSubscribeOp *salop, const char *event, const SalBodyHandler *body);
 	typedef void (*OnIncomingSubscribeClosedCb)(SalOp *salop);
 	typedef void (*OnParsePresenceRequestedCb)(SalOp *salop, const char *content_type, const char *content_subtype, const char *content, SalPresenceModel **result);
 	typedef void (*OnConvertPresenceToXMLRequestedCb)(SalOp *salop, SalPresenceModel *presence, const char *contact, char **content);
 	typedef void (*OnNotifyPresenceCb)(SalOp *op, SalSubscribeStatus ss, SalPresenceModel *model, const char *msg);
-	typedef void (*OnSubscribePresenceReceivedCb)(PresenceOp *salop, const char *from);
-	typedef void (*OnSubscribePresenceClosedCb)(PresenceOp *salop, const char *from);
+	typedef void (*OnSubscribePresenceReceivedCb)(SalPresenceOp *salop, const char *from);
+	typedef void (*OnSubscribePresenceClosedCb)(SalPresenceOp *salop, const char *from);
 	typedef void (*OnPingReplyCb)(SalOp *salop);
 	typedef void (*OnInfoReceivedCb)(SalOp *salop, SalBodyHandler *body);
 	typedef void (*OnPublishResponseCb)(SalOp *salop);
@@ -226,12 +226,12 @@ private:
 	bctbx_list_t *supported_content_types = NULL; /* list of char* */
 	
 	friend class SalOp;
-	friend class SalCall;
-	friend class RegisterOp;
-	friend class MessageOp;
-	friend class PresenceOp;
-	friend class SubscribeOp;
-	friend class PublishOp;
+	friend class SalCallOp;
+	friend class SalRegisterOp;
+	friend class SalMessageOp;
+	friend class SalPresenceOp;
+	friend class SalSubscribeOp;
+	friend class SalPublishOp;
 };
 
 class SalOp {

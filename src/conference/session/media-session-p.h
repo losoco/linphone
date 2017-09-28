@@ -90,7 +90,7 @@ public:
 	LinphoneCallStats *getStats (LinphoneStreamType type) const;
 	int getStreamIndex (LinphoneStreamType type) const;
 	int getStreamIndex (MediaStream *ms) const;
-	SalCall * getOp () const { return op; }
+	SalCallOp * getOp () const { return op; }
 	void setAudioMuted (bool value) { audioMuted = value; }
 
 private:

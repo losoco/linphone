@@ -81,7 +81,7 @@ static LinphoneCall * look_for_broken_call_to_replace(SalOp *h, LinphoneCore *lc
 	return NULL;
 }
 
-static void call_received(SalCall *h) {
+static void call_received(SalCallOp *h) {
 	/* Look if this INVITE is for a call that has already been notified but broken because of network failure */
 	LinphoneCore *lc = reinterpret_cast<LinphoneCore *>(h->get_sal()->get_user_pointer());
 	LinphoneCall *replacedCall = look_for_broken_call_to_replace(h, lc);
@@ -175,7 +175,7 @@ static void call_received(SalCall *h) {
 	L_GET_PRIVATE_FROM_C_OBJECT(call)->startIncomingNotification();
 }
 
-static void call_rejected(SalCall *h){
+static void call_rejected(SalCallOp *h){
 	LinphoneCore *lc=(LinphoneCore *)h->get_sal()->get_user_pointer();
 	LinphoneErrorInfo *ei = linphone_error_info_new();
 	linphone_error_info_from_sal_op(ei, h);
@@ -415,7 +415,7 @@ static void message_received(SalOp *op, const SalMessage *msg){
 	if (reason == LinphoneReasonNone) {
 		linphone_core_message_received(lc, op, msg);
 	}
-	auto messageOp = dynamic_cast<MessageOp *>(op);
+	auto messageOp = dynamic_cast<SalMessageOp *>(op);
 	messageOp->reply(linphone_reason_to_sal(reason));
 	if (!call) op->release();
 }
@@ -440,12 +440,12 @@ static void notify_presence(SalOp *op, SalSubscribeStatus ss, SalPresenceModel *
 	linphone_notify_recv(lc,op,ss,model);
 }
 
-static void subscribe_presence_received(PresenceOp *op, const char *from){
+static void subscribe_presence_received(SalPresenceOp *op, const char *from){
 	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 	linphone_subscription_new(lc,op,from);
 }
 
-static void subscribe_presence_closed(PresenceOp *op, const char *from){
+static void subscribe_presence_closed(SalPresenceOp *op, const char *from){
 	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 	linphone_subscription_closed(lc,op);
 }
@@ -617,7 +617,7 @@ static void subscribe_response(SalOp *op, SalSubscribeStatus status, int will_re
 	}
 }
 
-static void notify(SubscribeOp *op, SalSubscribeStatus st, const char *eventname, SalBodyHandler *body_handler){
+static void notify(SalSubscribeOp *op, SalSubscribeStatus st, const char *eventname, SalBodyHandler *body_handler){
 	LinphoneEvent *lev=(LinphoneEvent*)op->get_user_pointer();
 	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 	bool_t out_of_dialog = (lev==NULL);
@@ -640,7 +640,7 @@ static void notify(SubscribeOp *op, SalSubscribeStatus st, const char *eventname
 	}
 }
 
-static void subscribe_received(SubscribeOp *op, const char *eventname, const SalBodyHandler *body_handler){
+static void subscribe_received(SalSubscribeOp *op, const char *eventname, const SalBodyHandler *body_handler){
 	LinphoneEvent *lev=(LinphoneEvent*)op->get_user_pointer();
 	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 

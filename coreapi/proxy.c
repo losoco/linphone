@@ -481,7 +481,7 @@ static void linphone_proxy_config_register(LinphoneProxyConfig *cfg){
 		linphone_address_unref(proxy);
 		if (cfg->op)
 			cfg->op->release();
-		cfg->op=new RegisterOp(cfg->lc->sal);
+		cfg->op=new SalRegisterOp(cfg->lc->sal);
 
 		linphone_configure_op(cfg->lc, cfg->op, cfg->identity_address, cfg->sent_headers, FALSE);
 

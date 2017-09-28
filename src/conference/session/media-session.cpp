@@ -4069,7 +4069,7 @@ LinphoneStatus MediaSession::acceptUpdate (const MediaSessionParams *msp) {
 
 // -----------------------------------------------------------------------------
 
-void MediaSession::configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalCall *op, const Address &from, const Address &to) {
+void MediaSession::configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalCallOp *op, const Address &from, const Address &to) {
 	L_D();
 	CallSession::configure (direction, cfg, op, from, to);
 

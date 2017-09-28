@@ -43,7 +43,7 @@ public:
 		const Address &from,
 		const Address &to,
 		LinphoneProxyConfig *cfg,
-		SalCall *op,
+		SalCallOp *op,
 		const MediaSessionParams *msp
 	);
 

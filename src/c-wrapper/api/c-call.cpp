@@ -507,7 +507,7 @@ void linphone_call_refresh_sockets (LinphoneCall *call) {
 #endif
 }
 
-SalCall * linphone_call_get_op (const LinphoneCall *call) {
+SalCallOp * linphone_call_get_op (const LinphoneCall *call) {
 	return L_GET_PRIVATE_FROM_C_OBJECT(call)->getOp();
 }
 
@@ -1194,7 +1194,7 @@ LinphoneCall *linphone_call_new_outgoing (LinphoneCore *lc, const LinphoneAddres
 	return call;
 }
 
-LinphoneCall *linphone_call_new_incoming (LinphoneCore *lc, const LinphoneAddress *from, const LinphoneAddress *to, SalCall *op) {
+LinphoneCall *linphone_call_new_incoming (LinphoneCore *lc, const LinphoneAddress *from, const LinphoneAddress *to, SalCallOp *op) {
 	LinphoneCall *call = L_INIT(Call);
 	L_SET_CPP_PTR_FROM_C_OBJECT(call, make_shared<LinphonePrivate::Call>(call, lc, LinphoneCallIncoming,
 		*L_GET_CPP_PTR_FROM_C_OBJECT(from), *L_GET_CPP_PTR_FROM_C_OBJECT(to),

@@ -4,9 +4,9 @@
 #include "sal.hh"
 #include "message_op_interface.hh"
 
-class SalCall: public SalOp, public MessageOpInterface {
+class SalCallOp: public SalOp, public SalMessageOpInterface {
 public:
-	SalCall(Sal *sal): SalOp(sal) {}
+		SalCallOp(Sal *sal): SalOp(sal) {}
 	
 	int set_local_media_description(SalMediaDescription *desc);
 	int set_local_custom_body(SalCustomBody *body);
@@ -23,17 +23,17 @@ public:
 	void cancel_invite() {cancel_invite_with_info(NULL);}
 	void cancel_invite_with_info(const SalErrorInfo *info);
 	int refer(const char *refer_to_);
-	int refer_with_replaces(SalCall *other_call_op);
-	int set_referer(SalCall *refered_call);
-	SalCall *get_replaces();
+	int refer_with_replaces(SalCallOp *other_call_op);
+	int set_referer(SalCallOp *refered_call);
+		SalCallOp *get_replaces();
 	int send_dtmf(char dtmf);
 	int terminate() {return terminate_with_error(NULL);}
 	int terminate_with_error(const SalErrorInfo *info);
 	bool_t autoanswer_asked() const {return this->auto_answer_asked;}
 	void send_vfu_request();
 	int is_offerer() const {return this->sdp_offering;}
-	int notify_refer_state(SalCall *newcall);
-	bool_t compare_op(const SalCall *op2) const;
+	int notify_refer_state(SalCallOp *newcall);
+	bool_t compare_op(const SalCallOp *op2) const;
 	bool_t dialog_request_pending() const {return (belle_sip_dialog_request_pending(this->dialog) != 0);}
 	const char *get_local_tag() {return belle_sip_dialog_get_local_tag(this->dialog);}
 	const char *get_remote_tag() {return belle_sip_dialog_get_remote_tag(this->dialog);}
@@ -69,13 +69,13 @@ private:
 	static void unsupported_method(belle_sip_server_transaction_t* server_transaction,belle_sip_request_t* request);
 	static bool_t is_a_pending_invite_incoming_transaction(belle_sip_transaction_t *tr);
 	static void process_request_event_cb(void *op_base, const belle_sip_request_event_t *event);
-	static void set_call_as_released(SalCall *op);
+	static void set_call_as_released(SalCallOp *op);
 	static void process_dialog_terminated_cb(void *ctx, const belle_sip_dialog_terminated_event_t *event);
 	virtual void fill_cbs() override;
 	void fill_invite(belle_sip_request_t* invite);
 	static belle_sip_header_reason_t *make_reason_header( const SalErrorInfo *info);
 	int refer_to(belle_sip_header_refer_to_t* refer_to, belle_sip_header_referred_by_t* referred_by);
-	void notify_last_response(SalCall *newcall);
+	void notify_last_response(SalCallOp *newcall);
 	int send_notify_for_refer(int code, const char *reason);
 	void process_refer(const belle_sip_request_event_t *event, belle_sip_server_transaction_t *server_transaction);
 	void process_notify(const belle_sip_request_event_t *event, belle_sip_server_transaction_t* server_transaction);

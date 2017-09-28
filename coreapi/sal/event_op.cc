@@ -2,8 +2,8 @@
 
 using namespace std;
 
-void SubscribeOp::subscribe_process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event) {
-	SubscribeOp *op = (SubscribeOp*)user_ctx;
+void SalSubscribeOp::subscribe_process_io_error_cb(void *user_ctx, const belle_sip_io_error_event_t *event) {
+	SalSubscribeOp *op = (SalSubscribeOp *)user_ctx;
 	belle_sip_object_t *src = belle_sip_io_error_event_get_source(event);
 	if (BELLE_SIP_OBJECT_IS_INSTANCE_OF(src, belle_sip_client_transaction_t)){
 		belle_sip_client_transaction_t *tr = BELLE_SIP_CLIENT_TRANSACTION(src);
@@ -21,8 +21,8 @@ void SubscribeOp::subscribe_process_io_error_cb(void *user_ctx, const belle_sip_
 	}
 }
 
-void SubscribeOp::subscribe_response_event_cb(void *op_base, const belle_sip_response_event_t *event){
-	SubscribeOp *op = (SubscribeOp*)op_base;
+void SalSubscribeOp::subscribe_response_event_cb(void *op_base, const belle_sip_response_event_t *event){
+	SalSubscribeOp *op = (SalSubscribeOp *)op_base;
 	belle_sip_request_t * req;
 	const char *method;
 	belle_sip_client_transaction_t *tr =  belle_sip_response_event_get_client_transaction(event);
@@ -39,8 +39,8 @@ void SubscribeOp::subscribe_response_event_cb(void *op_base, const belle_sip_res
 	}
 }
 
-void SubscribeOp::subscribe_process_timeout_cb(void *user_ctx, const belle_sip_timeout_event_t *event) {
-	SubscribeOp *op = (SubscribeOp*)user_ctx;
+void SalSubscribeOp::subscribe_process_timeout_cb(void *user_ctx, const belle_sip_timeout_event_t *event) {
+	SalSubscribeOp *op = (SalSubscribeOp *)user_ctx;
 	belle_sip_request_t * req;
 	const char *method;
 	belle_sip_client_transaction_t *tr =  belle_sip_timeout_event_get_client_transaction(event);
@@ -59,7 +59,7 @@ void SubscribeOp::subscribe_process_timeout_cb(void *user_ctx, const belle_sip_t
 	}
 }
 
-void SubscribeOp::handle_notify(belle_sip_request_t *req, const char *eventname, SalBodyHandler* body_handler){
+void SalSubscribeOp::handle_notify(belle_sip_request_t *req, const char *eventname, SalBodyHandler* body_handler){
 	SalSubscribeStatus sub_state;
 	belle_sip_header_subscription_state_t* subscription_state_header=belle_sip_message_get_header_by_type(req,belle_sip_header_subscription_state_t);
 	belle_sip_response_t* resp;
@@ -77,8 +77,8 @@ void SubscribeOp::handle_notify(belle_sip_request_t *req, const char *eventname,
 	unref();
 }
 
-void SubscribeOp::subscribe_process_request_event_cb(void *op_base, const belle_sip_request_event_t *event) {
-	SubscribeOp* op = (SubscribeOp*)op_base;
+void SalSubscribeOp::subscribe_process_request_event_cb(void *op_base, const belle_sip_request_event_t *event) {
+	SalSubscribeOp * op = (SalSubscribeOp *)op_base;
 	belle_sip_server_transaction_t* server_transaction = belle_sip_provider_create_server_transaction(op->root->prov,belle_sip_request_event_get_request(event));
 	belle_sip_request_t* req = belle_sip_request_event_get_request(event);
 	belle_sip_dialog_state_t dialog_state;
@@ -162,9 +162,9 @@ void SubscribeOp::subscribe_process_request_event_cb(void *op_base, const belle_
 	}
 }
 
-void SubscribeOp::subscribe_process_dialog_terminated_cb(void *ctx, const belle_sip_dialog_terminated_event_t *event) {
+void SalSubscribeOp::subscribe_process_dialog_terminated_cb(void *ctx, const belle_sip_dialog_terminated_event_t *event) {
 	belle_sip_dialog_t *dialog = belle_sip_dialog_terminated_event_get_dialog(event);
-	SubscribeOp* op= (SubscribeOp*)ctx;
+	SalSubscribeOp * op= (SalSubscribeOp *)ctx;
 	if (op->dialog) {
 		if (belle_sip_dialog_terminated_event_is_expired(event)){
 			if (!belle_sip_dialog_is_server(dialog)){
@@ -182,8 +182,8 @@ void SubscribeOp::subscribe_process_dialog_terminated_cb(void *ctx, const belle_
 	}
 }
 
-void SubscribeOp::_release_cb(SalOp *op_base) {
-	auto *op =reinterpret_cast<SubscribeOp *>(op_base);
+void SalSubscribeOp::_release_cb(SalOp *op_base) {
+	auto *op =reinterpret_cast<SalSubscribeOp *>(op_base);
 	if(op->refresher) {
 		belle_sip_refresher_stop(op->refresher);
 		belle_sip_object_unref(op->refresher);
@@ -192,7 +192,7 @@ void SubscribeOp::_release_cb(SalOp *op_base) {
 	}
 }
 
-void SubscribeOp::fill_cbs() {
+void SalSubscribeOp::fill_cbs() {
 	static belle_sip_listener_callbacks_t op_subscribe_callbacks={0};
 	if (op_subscribe_callbacks.process_io_error==NULL){
 		op_subscribe_callbacks.process_io_error=subscribe_process_io_error_cb;
@@ -207,8 +207,8 @@ void SubscribeOp::fill_cbs() {
 	this->release_cb=release_cb;
 }
 
-void SubscribeOp::subscribe_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry) {
-	SubscribeOp* op = (SubscribeOp*)user_pointer;
+void SalSubscribeOp::subscribe_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry) {
+	SalSubscribeOp * op = (SalSubscribeOp *)user_pointer;
 	belle_sip_transaction_t *tr=BELLE_SIP_TRANSACTION(belle_sip_refresher_get_transaction(refresher));
 	/*belle_sip_response_t* response=belle_sip_transaction_get_response(tr);*/
 	SalSubscribeStatus sss=SalSubscribeTerminated;
@@ -232,7 +232,7 @@ void SubscribeOp::subscribe_refresher_listener_cb (belle_sip_refresher_t* refres
 	
 }
 
-int SubscribeOp::subscribe(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler) {
+int SalSubscribeOp::subscribe(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler) {
 	belle_sip_request_t *req=NULL;
 	
 	if (from)
@@ -262,7 +262,7 @@ int SubscribeOp::subscribe(const char *from, const char *to, const char *eventna
 	return -1;
 }
 
-int SubscribeOp::accept() {
+int SalSubscribeOp::accept() {
 	belle_sip_request_t* req=belle_sip_transaction_get_request(BELLE_SIP_TRANSACTION(this->pending_server_trans));
 	belle_sip_header_expires_t* expires = belle_sip_message_get_header_by_type(req,belle_sip_header_expires_t);
 	belle_sip_response_t* resp = create_response_from_request(req,200);
@@ -271,14 +271,14 @@ int SubscribeOp::accept() {
 	return 0;
 }
 
-int SubscribeOp::decline(SalReason reason) {
+int SalSubscribeOp::decline(SalReason reason) {
 	belle_sip_response_t*  resp = belle_sip_response_create_from_request(belle_sip_transaction_get_request(BELLE_SIP_TRANSACTION(this->pending_server_trans)),
 									   to_sip_code(reason));
 	belle_sip_server_transaction_send_response(this->pending_server_trans,resp);
 	return 0;
 }
 
-int SubscribeOp::notify_pending_state() {
+int SalSubscribeOp::notify_pending_state() {
 	
 	if (this->dialog != NULL && this->pending_server_trans) {
 		belle_sip_request_t* notify;
@@ -300,7 +300,7 @@ int SubscribeOp::notify_pending_state() {
 	return 0;
 }
 
-int SubscribeOp::notify(const SalBodyHandler *body_handler) {
+int SalSubscribeOp::notify(const SalBodyHandler *body_handler) {
 	belle_sip_request_t* notify;
 	
 	if (this->dialog){
@@ -321,7 +321,7 @@ int SubscribeOp::notify(const SalBodyHandler *body_handler) {
 	return send_request(notify);
 }
 
-int SubscribeOp::close_notify() {
+int SalSubscribeOp::close_notify() {
 	belle_sip_request_t* notify;
 	if (!this->dialog) return -1;
 	if (!(notify=belle_sip_dialog_create_queued_request(this->dialog,"NOTIFY"))) return -1;
@@ -331,15 +331,15 @@ int SubscribeOp::close_notify() {
 	return send_request(notify);
 }
 
-void PublishOp::publish_response_event_cb(void *userctx, const belle_sip_response_event_t *event) {
-	PublishOp *op=(PublishOp*)userctx;
+void SalPublishOp::publish_response_event_cb(void *userctx, const belle_sip_response_event_t *event) {
+	SalPublishOp *op=(SalPublishOp *)userctx;
 	op->set_error_info_from_response(belle_sip_response_event_get_response(event));
 	if (op->error_info.protocol_code>=200){
 		op->root->callbacks.on_publish_response(op);
 	}
 }
 
-void PublishOp::fill_cbs() {
+void SalPublishOp::fill_cbs() {
 	static belle_sip_listener_callbacks_t op_publish_callbacks={0};
 	if (op_publish_callbacks.process_response_event==NULL){
 		op_publish_callbacks.process_response_event=publish_response_event_cb;
@@ -349,8 +349,8 @@ void PublishOp::fill_cbs() {
 	this->type=Type::Publish;
 }
 
-void PublishOp::publish_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry) {
-	PublishOp* op = (PublishOp*)user_pointer;
+void SalPublishOp::publish_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry) {
+	SalPublishOp * op = (SalPublishOp *)user_pointer;
 	const belle_sip_client_transaction_t* last_publish_trans=belle_sip_refresher_get_transaction(op->refresher);
 	belle_sip_response_t *response=belle_sip_transaction_get_response(BELLE_SIP_TRANSACTION(last_publish_trans));
 	ms_message("Publish refresher  [%i] reason [%s] for proxy [%s]",status_code,reason_phrase?reason_phrase:"none",op->get_proxy());
@@ -369,7 +369,7 @@ void PublishOp::publish_refresher_listener_cb (belle_sip_refresher_t* refresher,
 	}
 }
 
-int PublishOp::publish(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler) {
+int SalPublishOp::publish(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler) {
 	belle_sip_request_t *req=NULL;
 	if(!this->refresher || !belle_sip_refresher_get_transaction(this->refresher)) {
 		if (from)
@@ -409,7 +409,7 @@ int PublishOp::publish(const char *from, const char *to, const char *eventname, 
 	}
 }
 
-int PublishOp::unpublish() {
+int SalPublishOp::unpublish() {
 	if (this->refresher){
 		const belle_sip_transaction_t *tr=(const belle_sip_transaction_t*) belle_sip_refresher_get_transaction(this->refresher);
 		belle_sip_request_t *last_req=belle_sip_transaction_get_request(tr);

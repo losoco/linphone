@@ -85,19 +85,19 @@ void Sal::process_request_event_cb(void *ud, const belle_sip_request_event_t *ev
 		}
 
 		if (strcmp("INVITE",method)==0) {
-			op=new SalCall(sal);
+			op=new SalCallOp(sal);
 			op->dir=SalOp::Dir::Incoming;
 			op->fill_cbs();
 		}else if ((strcmp("SUBSCRIBE",method)==0 || strcmp("NOTIFY",method)==0) && (evh=belle_sip_message_get_header(BELLE_SIP_MESSAGE(req),"Event"))!=NULL) {
 			if (strncmp(belle_sip_header_get_unparsed_value(evh),"presence",strlen("presence"))==0){
-				op=new PresenceOp(sal);
+				op=new SalPresenceOp(sal);
 			} else {
-				op=new SubscribeOp(sal);
+				op=new SalSubscribeOp(sal);
 			}
 			op->dir=SalOp::Dir::Incoming;
 			op->fill_cbs();
 		}else if (strcmp("MESSAGE",method)==0) {
-			op=new MessageOp(sal);
+			op=new SalMessageOp(sal);
 			op->dir=SalOp::Dir::Incoming;
 			op->fill_cbs();
 		}else if (strcmp("OPTIONS",method)==0) {
@@ -1977,17 +1977,17 @@ const SalErrorInfo *sal_op_get_error_info(const SalOp *op) {
 }
 
 bool_t sal_call_dialog_request_pending(const SalOp *op) {
-	auto callOp = dynamic_cast<const SalCall *>(op);
+	auto callOp = dynamic_cast<const SalCallOp *>(op);
 	return callOp->dialog_request_pending();
 }
 
 void sal_call_set_sdp_handling(SalOp *h, SalOpSDPHandling handling) {
-	auto callOp = dynamic_cast<SalCall *>(h);
+	auto callOp = dynamic_cast<SalCallOp *>(h);
 	callOp->set_sdp_handling(handling);
 }
 
 SalMediaDescription * sal_call_get_final_media_description(SalOp *h) {
-	auto callOp = dynamic_cast<SalCall *>(h);
+	auto callOp = dynamic_cast<SalCallOp *>(h);
 	return callOp->get_final_media_description();
 }
 

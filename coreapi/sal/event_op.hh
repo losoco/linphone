@@ -3,14 +3,14 @@
 
 #include "sal.hh"
 
-class EventOp: public SalOp {
+class SalEventOp: public SalOp {
 public:
-	EventOp(Sal *sal): SalOp(sal) {}
+		SalEventOp(Sal *sal): SalOp(sal) {}
 };
 
-class SubscribeOp: public EventOp {
+class SalSubscribeOp: public SalEventOp {
 public:
-	SubscribeOp(Sal *sal): EventOp(sal) {}
+		SalSubscribeOp(Sal *sal): SalEventOp(sal) {}
 	
 	int subscribe(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler);
 	int unsubscribe() {return SalOp::unsubscribe();}
@@ -34,9 +34,9 @@ private:
 	static void subscribe_refresher_listener_cb (belle_sip_refresher_t* refresher,void* user_pointer,unsigned int status_code,const char* reason_phrase, int will_retry);
 };
 
-class PublishOp: public EventOp {
+class SalPublishOp: public SalEventOp {
 public:
-    PublishOp(Sal *sal): EventOp(sal) {}
+    	SalPublishOp(Sal *sal): SalEventOp(sal) {}
     
 	int publish(const char *from, const char *to, const char *eventname, int expires, const SalBodyHandler *body_handler);
 	int unpublish();

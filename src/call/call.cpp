@@ -70,7 +70,7 @@ MediaStream *CallPrivate::getMediaStream (LinphoneStreamType type) const {
 	return static_cast<MediaSession *>(getActiveSession().get())->getPrivate()->getMediaStream(type);
 }
 
-SalCall * CallPrivate::getOp () const {
+SalCallOp * CallPrivate::getOp () const {
 	return getActiveSession()->getPrivate()->getOp();
 }
 
@@ -219,7 +219,7 @@ Call::Call (
 	const Address &from,
 	const Address &to,
 	LinphoneProxyConfig *cfg,
-	SalCall *op,
+	SalCallOp *op,
 	const MediaSessionParams *msp
 ) : Object(*new CallPrivate(call, core, direction, from, to, cfg, op, msp)) {
 	L_D();
