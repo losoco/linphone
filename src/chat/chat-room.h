@@ -19,12 +19,14 @@
 #ifndef _CHAT_ROOM_H_
 #define _CHAT_ROOM_H_
 
+#include <list>
+
 // From coreapi
 #include "private.h"
 
-#include <list>
-
+#include "address/address.h"
 #include "object/object.h"
+#include "conference/conference-interface.h"
 
 #include "linphone/types.h"
 
@@ -34,9 +36,13 @@ LINPHONE_BEGIN_NAMESPACE
 
 class ChatRoomPrivate;
 
-class ChatRoom : public Object {
+class LINPHONE_PUBLIC ChatRoom : public Object, public ConferenceInterface {
+	friend class ChatMessagePrivate;
+
 public:
-	ChatRoom (LinphoneCore *core, LinphoneAddress *peerAddress);
+	L_DECLARE_ENUM(State, L_ENUM_VALUES_CHAT_ROOM_STATE);
+
+	ChatRoom (LinphoneCore *core);
 	virtual ~ChatRoom () = default;
 
 	void compose ();
@@ -46,19 +52,21 @@ public:
 	void deleteMessage (LinphoneChatMessage *msg);
 	LinphoneChatMessage * findMessage (const std::string& messageId);
 	LinphoneChatMessage * findMessageWithDirection (const std::string &messageId, LinphoneChatMessageDir direction);
-	uint32_t getChar () const;
 	std::list<LinphoneChatMessage *> getHistory (int nbMessages);
 	int getHistorySize ();
 	std::list<LinphoneChatMessage *> getHistoryRange (int startm, int endm);
 	int getUnreadMessagesCount ();
 	bool isRemoteComposing () const;
 	void markAsRead ();
-	void sendMessage (LinphoneChatMessage *msg);
+	virtual void sendMessage (LinphoneChatMessage *msg);
 
-	LinphoneCall *getCall () const;
 	LinphoneCore *getCore () const;
 
-	const LinphoneAddress *getPeerAddress () const;
+	const Address& getPeerAddress () const;
+	State getState () const;
+
+protected:
+	explicit ChatRoom (ChatRoomPrivate &p);
 
 private:
 	L_DECLARE_PRIVATE(ChatRoom);
@@ -68,4 +76,3 @@ private:
 LINPHONE_END_NAMESPACE
 
 #endif // ifndef _CHAT_ROOM_H_
-

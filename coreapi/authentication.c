@@ -23,9 +23,10 @@
  */
 
 #include "linphone/core.h"
-#include "private.h"
 #include "linphone/lpconfig.h"
 #include "sal/sal.hh"
+
+#include "c-wrapper/c-wrapper.h"
 
 static void _linphone_auth_info_uninit(LinphoneAuthInfo *obj);
 static void _linphone_auth_info_copy(LinphoneAuthInfo *dst, const LinphoneAuthInfo *src);
@@ -220,7 +221,7 @@ void linphone_auth_info_destroy(LinphoneAuthInfo *obj){
 
 void linphone_auth_info_write_config(LpConfig *config, LinphoneAuthInfo *obj, int pos) {
 	char key[50];
-	bool_t store_ha1_passwd = lp_config_get_int(config, "sip", "store_ha1_passwd", 1);
+	bool_t store_ha1_passwd = !!lp_config_get_int(config, "sip", "store_ha1_passwd", 1);
 
 	sprintf(key, "auth_info_%i", pos);
 	lp_config_clean_section(config, key);

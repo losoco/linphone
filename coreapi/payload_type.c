@@ -19,9 +19,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include <string.h>
 #include <ortp/payloadtype.h>
-#include "linphone/payload_type.h"
-#include "private.h"
 
+#include "linphone/payload_type.h"
+
+#include "c-wrapper/c-wrapper.h"
 #include "utils/payload-type-handler.h"
 
 struct _LinphonePayloadType {
@@ -106,11 +107,7 @@ char *linphone_payload_type_get_description(const LinphonePayloadType *pt) {
 static const char *_linphone_core_get_payload_type_codec_description(const LinphoneCore *lc, const OrtpPayloadType *pt) {
 	if (ms_factory_codec_supported(lc->factory, pt->mime_type)){
 		MSFilterDesc *desc=ms_factory_get_encoder(lc->factory, pt->mime_type);
-#ifdef ENABLE_NLS
-		return dgettext("mediastreamer",desc->text);
-#else
 		return desc->text;
-#endif
 	}
 	return NULL;
 }

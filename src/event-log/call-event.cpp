@@ -16,9 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "event-log-p.h"
-
 #include "call-event.h"
+#include "event-log-p.h"
 
 // =============================================================================
 
@@ -34,16 +33,16 @@ public:
 // -----------------------------------------------------------------------------
 
 CallEvent::CallEvent (Type type, const shared_ptr<Call> &call) : EventLog(*new CallEventPrivate, type) {
-	L_D(CallEvent);
+	L_D();
 	L_ASSERT(call);
-	L_ASSERT(type == TypeCallStart || type == TypeCallEnd);
+	L_ASSERT(type == Type::CallStart || type == Type::CallEnd);
 	d->call = call;
 }
 
 CallEvent::CallEvent (const CallEvent &src) : CallEvent(src.getType(), src.getCall()) {}
 
 CallEvent &CallEvent::operator= (const CallEvent &src) {
-	L_D(CallEvent);
+	L_D();
 	if (this != &src) {
 		EventLog::operator=(src);
 		d->call = src.getPrivate()->call;
@@ -53,7 +52,7 @@ CallEvent &CallEvent::operator= (const CallEvent &src) {
 }
 
 shared_ptr<Call> CallEvent::getCall () const {
-	L_D(const CallEvent);
+	L_D();
 	return d->call;
 }
 

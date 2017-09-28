@@ -19,8 +19,6 @@
 #ifndef _CALL_SESSION_PARAMS_H_
 #define _CALL_SESSION_PARAMS_H_
 
-#include <string>
-
 #include "object/clonable-object.h"
 
 #include "linphone/types.h"
@@ -43,6 +41,8 @@ public:
 	CallSessionParams ();
 	CallSessionParams (const CallSessionParams &src);
 	virtual ~CallSessionParams () = default;
+
+	CallSessionParams &operator= (const CallSessionParams &src);
 
 	virtual void initDefault (LinphoneCore *core);
 

@@ -14,7 +14,7 @@ public:
 	SalMediaDescription *get_remote_media_description() {return this->remote_media;}
 	SalMediaDescription *get_final_media_description();
 	
-	int call(const char *from, const char *to);
+	int call(const char *from, const char *to, const char *subject);
 	int notify_ringing(bool_t early_media);
 	int accept();
 	int decline(SalReason reason, const char *redirection /*optional*/);
@@ -40,8 +40,9 @@ public:
 	void set_replaces(const char *call_id, const char *from_tag, const char *to_tag);
 	void set_sdp_handling(SalOpSDPHandling handling);
 	
-	virtual int send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) override;
-	virtual int reply(SalReason reason) override {return SalOp::reply_message(reason);}
+// 	int send_message(const char *from, const char *to, const char *msg) override {return MessageOpInterface::send_message(from, to, msg);}
+	int send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) override;
+	int reply(SalReason reason) override {return SalOp::reply_message(reason);}
 
 private:
 	static belle_sip_header_allow_t *create_allow(bool_t enable_update);

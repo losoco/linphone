@@ -16,19 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "stun-client.h"
+#include "private.h"
 
 #include "logger/logger.h"
 
-#include "linphone/core.h"
+#include "stun-client.h"
 
-#include "private.h"
+// =============================================================================
 
 using namespace std;
 
 LINPHONE_BEGIN_NAMESPACE
-
-// =============================================================================
 
 int StunClient::run (int audioPort, int videoPort, int textPort) {
 	if (linphone_core_ipv6_enabled(core)) {
@@ -42,7 +40,6 @@ int StunClient::run (int audioPort, int videoPort, int textPort) {
 		lError() << "Could not obtain STUN server addrinfo";
 		return -1;
 	}
-	linphone_core_notify_display_status(core, "Stun lookup in progress...");
 
 	/* Create the RTP sockets and send STUN messages to the STUN server */
 	ortp_socket_t sockAudio = createStunSocket(audioPort);
@@ -107,38 +104,35 @@ int StunClient::run (int audioPort, int videoPort, int textPort) {
 		}
 		struct timeval cur;
 		ortp_gettimeofday(&cur, nullptr);
-		elapsed = ((cur.tv_sec - init.tv_sec) * 1000.) + ((cur.tv_usec - init.tv_usec) / 1000.);
+		elapsed = static_cast<double>(cur.tv_sec - init.tv_sec) * 1000 + static_cast<double>(cur.tv_usec - init.tv_usec) / 1000;
 		if (elapsed > 2000.) {
 			lInfo() << "STUN responses timeout, going ahead";
 			ret = -1;
 			break;
 		}
 		loops++;
-	} while (!(gotAudio && (gotVideo || (sockVideo == -1)) && (gotText || (sockText == -1))));
+	} while (!(gotAudio && (gotVideo || sockVideo == -1) && (gotText || sockText == -1)));
 
 	if (ret == 0)
 		ret = (int)elapsed;
+
 	if (!gotAudio)
 		lError() << "No STUN server response for audio port";
-	else {
-		if (!coneAudio)
-			lInfo() << "NAT is symmetric for audio port";
-	}
+	else if (!coneAudio)
+		lInfo() << "NAT is symmetric for audio port";
+
 	if (sockVideo != -1) {
 		if (!gotVideo)
 			lError() << "No STUN server response for video port";
-		else {
-			if (!coneVideo)
-				lInfo() << "NAT is symmetric for video port";
-		}
+		else if (!coneVideo)
+			lInfo() << "NAT is symmetric for video port";
 	}
+
 	if (sockText != -1) {
 		if (!gotText)
 			lError() << "No STUN server response for text port";
-		else {
-			if (!coneText)
-				lInfo() << "NAT is symmetric for text port";
-		}
+		else if (!coneText)
+			lInfo() << "NAT is symmetric for text port";
 	}
 
 	close_socket(sockAudio);
@@ -151,16 +145,22 @@ void StunClient::updateMediaDescription (SalMediaDescription *md) const {
 	for (int i = 0; i < SAL_MEDIA_DESCRIPTION_MAX_STREAMS; i++) {
 		if (!sal_stream_description_active(&md->streams[i]))
 			continue;
-		if ((md->streams[i].type == SalAudio) && (audioCandidate.port != 0)) {
+		if (md->streams[i].type == SalAudio && audioCandidate.port != 0) {
 			strncpy(md->streams[i].rtp_addr, audioCandidate.address.c_str(), sizeof(md->streams[i].rtp_addr));
 			md->streams[i].rtp_port = audioCandidate.port;
-			if ((!audioCandidate.address.empty() && !videoCandidate.address.empty() && (audioCandidate.address == videoCandidate.address))
-				|| (sal_media_description_get_nb_active_streams(md) == 1))
+			if (
+				(
+					!audioCandidate.address.empty() &&
+					!videoCandidate.address.empty() &&
+					audioCandidate.address == videoCandidate.address
+				) ||
+				sal_media_description_get_nb_active_streams(md) == 1
+			)
 				strncpy(md->addr, audioCandidate.address.c_str(), sizeof(md->addr));
-		} else if ((md->streams[i].type == SalVideo) && (videoCandidate.port != 0)) {
+		} else if (md->streams[i].type == SalVideo && videoCandidate.port != 0) {
 			strncpy(md->streams[i].rtp_addr, videoCandidate.address.c_str(), sizeof(md->streams[i].rtp_addr));
 			md->streams[i].rtp_port = videoCandidate.port;
-		} else if ((md->streams[i].type == SalText) && (textCandidate.port != 0)) {
+		} else if (md->streams[i].type == SalText && textCandidate.port != 0) {
 			strncpy(md->streams[i].rtp_addr, textCandidate.address.c_str(), sizeof(md->streams[i].rtp_addr));
 			md->streams[i].rtp_port = textCandidate.port;
 		}
@@ -181,24 +181,24 @@ ortp_socket_t StunClient::createStunSocket (int localPort) {
 	memset(&laddr, 0, sizeof(laddr));
 	laddr.sin_family = AF_INET;
 	laddr.sin_addr.s_addr = INADDR_ANY;
-	laddr.sin_port = htons(localPort);
-	if (bind(sock, (struct sockaddr *)&laddr, sizeof(laddr)) < 0) {
+	laddr.sin_port = htons(static_cast<uint16_t>(localPort));
+	if (::bind(sock, (struct sockaddr *)&laddr, sizeof(laddr)) < 0) {
 		lError() << "Bind socket to 0.0.0.0:" << localPort << " failed: " << getSocketError();
 		close_socket(sock);
 		return -1;
 	}
 	int optval = 1;
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (SOCKET_OPTION_VALUE)&optval, sizeof (optval)) < 0)
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (SOCKET_OPTION_VALUE)&optval, sizeof(optval)) < 0)
 		lWarning() << "Fail to set SO_REUSEADDR";
 	set_non_blocking_socket(sock);
 	return sock;
 }
 
-int StunClient::recvStunResponse(ortp_socket_t sock, Candidate &candidate, int &id) {
+int StunClient::recvStunResponse (ortp_socket_t sock, Candidate &candidate, int &id) {
 	char buf[MS_STUN_MAX_MESSAGE_SIZE];
 	int len = MS_STUN_MAX_MESSAGE_SIZE;
 
-	len = recv(sock, buf, len, 0);
+	len = static_cast<int>(recv(sock, buf, static_cast<size_t>(len), 0));
 	if (len > 0) {
 		struct in_addr ia;
 		MSStunMessage *resp = ms_stun_message_create_from_buffer_parsing((uint8_t *)buf, (ssize_t)len);
@@ -224,10 +224,16 @@ int StunClient::recvStunResponse(ortp_socket_t sock, Candidate &candidate, int &
 	return len;
 }
 
-int StunClient::sendStunRequest(ortp_socket_t sock, const struct sockaddr *server, socklen_t addrlen, int id, bool changeAddr) {
+int StunClient::sendStunRequest (
+	ortp_socket_t sock,
+	const struct sockaddr *server,
+	socklen_t addrlen,
+	int id,
+	bool changeAddr
+) {
 	MSStunMessage *req = ms_stun_binding_request_create();
 	UInt96 trId = ms_stun_message_get_tr_id(req);
-	trId.octet[0] = id;
+	trId.octet[0] = static_cast<unsigned char>(id);
 	ms_stun_message_set_tr_id(req, trId);
 	ms_stun_message_enable_change_ip(req, changeAddr);
 	ms_stun_message_enable_change_port(req, changeAddr);
@@ -238,7 +244,7 @@ int StunClient::sendStunRequest(ortp_socket_t sock, const struct sockaddr *serve
 		lError() << "Failed to encode STUN message";
 		err = -1;
 	} else {
-		err = bctbx_sendto(sock, buf, len, 0, server, addrlen);
+		err = static_cast<int>(bctbx_sendto(sock, buf, len, 0, server, addrlen));
 		if (err < 0) {
 			lError() << "sendto failed: " << strerror(errno);
 			err = -1;

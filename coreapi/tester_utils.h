@@ -87,9 +87,9 @@ LINPHONE_PUBLIC LinphoneProxyConfig * linphone_call_get_dest_proxy(const Linphon
 LINPHONE_PUBLIC void linphone_call_params_set_no_user_consent(LinphoneCallParams *params, bool_t value);
 LINPHONE_PUBLIC bool_t linphone_call_params_get_update_call_when_ice_completed(const LinphoneCallParams *params);
 
-LINPHONE_PUBLIC bool_t linphone_call_stats_is_updated(const LinphoneCallStats *stats);
-LINPHONE_PUBLIC bool_t linphone_call_stats_get_rtcp_received_via_mux(const LinphoneCallStats *stats);
-LINPHONE_PUBLIC mblk_t *linphone_call_stats_get_received_rtcp(const LinphoneCallStats *stats);
+LINPHONE_PUBLIC int _linphone_call_stats_get_updated(const LinphoneCallStats *stats);
+LINPHONE_PUBLIC bool_t _linphone_call_stats_rtcp_received_via_mux(const LinphoneCallStats *stats);
+LINPHONE_PUBLIC mblk_t *_linphone_call_stats_get_received_rtcp (const LinphoneCallStats *stats);
 
 LINPHONE_PUBLIC LinphoneQualityReporting *linphone_call_log_get_quality_reporting(LinphoneCallLog *call_log);
 LINPHONE_PUBLIC reporting_session_report_t **linphone_quality_reporting_get_reports(LinphoneQualityReporting *qreporting);

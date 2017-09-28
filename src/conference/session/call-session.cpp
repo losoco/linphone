@@ -18,12 +18,11 @@
 
 #include <bctoolbox/defs.h>
 
-#include "c-wrapper/c-tools.h"
+#include "c-wrapper/c-wrapper.h"
 
 #include "address/address-p.h"
 #include "conference/session/call-session-p.h"
 #include "call/call-p.h"
-#include "conference/conference-p.h"
 #include "conference/params/call-session-params-p.h"
 
 #include "conference/session/call-session.h"
@@ -40,22 +39,26 @@ LINPHONE_BEGIN_NAMESPACE
 
 // =============================================================================
 
-CallSessionPrivate::CallSessionPrivate (const Conference &conference, const shared_ptr<CallSessionParams> params, CallSessionListener *listener)
+CallSessionPrivate::CallSessionPrivate (const Conference &conference, const CallSessionParams *params, CallSessionListener *listener)
 	: conference(conference), listener(listener) {
 	if (params)
-		this->params = make_shared<CallSessionParams>(*params.get());
-	currentParams = make_shared<CallSessionParams>();
-	core = conference.getPrivate()->getCore();
+		this->params = new CallSessionParams(*params);
+	currentParams = new CallSessionParams();
+	core = conference.getCore();
 	ei = linphone_error_info_new();
 }
 
 CallSessionPrivate::~CallSessionPrivate () {
+	if (currentParams)
+		delete currentParams;
+	if (params)
+		delete params;
+	if (remoteParams)
+		delete remoteParams;
 	if (ei)
 		linphone_error_info_unref(ei);
 	if (log)
 		linphone_call_log_unref(log);
-	if (natPolicy)
-		linphone_nat_policy_unref(natPolicy);
 	if (op)
 		op->release();
 }
@@ -77,7 +80,7 @@ void CallSessionPrivate::initializeParamsAccordingToIncomingCallParams () {
 }
 
 void CallSessionPrivate::setState(LinphoneCallState newState, const string &message) {
-	L_Q(CallSession);
+	L_Q();
 	if (state != newState){
 		prevState = state;
 
@@ -154,19 +157,6 @@ void CallSessionPrivate::setState(LinphoneCallState newState, const string &mess
 				linphone_core_multicast_lock_release(core);
 #endif
 				break;
-			case LinphoneCallStreamsRunning:
-				if ((prevState == LinphoneCallUpdating) || (prevState == LinphoneCallUpdatedByRemote)) {
-					LinphoneReason reason = linphone_error_info_get_reason(ei);
-					char *msg;
-					if (reason != LinphoneReasonNone) {
-						msg = ms_strdup_printf(_("Call parameters could not be modified: %s."), linphone_reason_to_string(reason));
-					} else {
-						msg = ms_strdup(_("Call parameters were successfully modified."));
-					}
-					linphone_core_notify_display_status(core, msg);
-					ms_free(msg);
-				}
-				break;
 			default:
 				break;
 		}
@@ -184,7 +174,7 @@ void CallSessionPrivate::setState(LinphoneCallState newState, const string &mess
 				linphone_call_state_to_string(prevState) << " to " << linphone_call_state_to_string(state) << ")";
 		}
 		if (listener)
-			listener->callSessionStateChanged(*q, state, message);
+			listener->onCallSessionStateChanged(*q, state, message);
 		if (newState == LinphoneCallReleased)
 			setReleased(); /* Shall be performed after app notification */
 	}
@@ -220,13 +210,10 @@ bool CallSessionPrivate::startPing () {
 
 void CallSessionPrivate::abort (const string &errorMsg) {
 	op->terminate();
-	linphone_core_notify_display_status(core, "Call aborted");
 	setState(LinphoneCallError, errorMsg);
 }
 
 void CallSessionPrivate::accepted () {
-	L_Q(CallSession);
-	char *msg = nullptr;
 	/* Immediately notify the connected state, even if errors occur after */
 	switch (state) {
 		case LinphoneCallOutgoingProgress:
@@ -234,9 +221,6 @@ void CallSessionPrivate::accepted () {
 		case LinphoneCallOutgoingEarlyMedia:
 			/* Immediately notify the connected state */
 			setState(LinphoneCallConnected, "Connected");
-			msg = ms_strdup_printf(_("Call answered by %s"), q->getRemoteAddressAsString().c_str());
-			linphone_core_notify_display_status(core, msg);
-			ms_free(msg);
 			break;
 		default:
 			break;
@@ -245,39 +229,21 @@ void CallSessionPrivate::accepted () {
 }
 
 void CallSessionPrivate::ackBeingSent (LinphoneHeaders *headers) {
-	L_Q(CallSession);
+	L_Q();
 	if (listener)
-		listener->ackBeingSent(*q, headers);
+		listener->onAckBeingSent(*q, headers);
 }
 
 void CallSessionPrivate::ackReceived (LinphoneHeaders *headers) {
-	L_Q(CallSession);
+	L_Q();
 	if (listener)
-		listener->ackReceived(*q, headers);
+		listener->onAckReceived(*q, headers);
 }
 
 bool CallSessionPrivate::failure () {
-	L_Q(CallSession);
-	linphone_core_notify_show_interface(core);
-	const char *msg = ei->full_string;
-	const char *msg486 = "User is busy.";
-	const char *msg480 = "User is temporarily unavailable.";
-	const char *msg600 = "User does not want to be disturbed.";
-	const char *msg603 = "Call declined.";
+	L_Q();
 	const SalErrorInfo *ei = op->get_error_info();
 	switch (ei->reason) {
-		case SalReasonNone:
-			break;
-		case SalReasonRequestTimeout:
-			msg = "Request timeout.";
-			linphone_core_notify_display_status(core, msg);
-			break;
-		case SalReasonDeclined:
-			linphone_core_notify_display_status(core, msg603);
-			break;
-		case SalReasonBusy:
-			linphone_core_notify_display_status(core, msg486);
-			break;
 		case SalReasonRedirect:
 			if ((state == LinphoneCallOutgoingInit) || (state == LinphoneCallOutgoingProgress)
 				|| (state == LinphoneCallOutgoingRinging) /* Push notification case */ || (state == LinphoneCallOutgoingEarlyMedia)) {
@@ -294,24 +260,9 @@ bool CallSessionPrivate::failure () {
 #endif
 					return true;
 				}
-				msg = "Redirected";
-				linphone_core_notify_display_status(core, msg);
 			}
 			break;
-		case SalReasonTemporarilyUnavailable:
-			linphone_core_notify_display_status(core, msg480);
-			break;
-		case SalReasonNotFound:
-			linphone_core_notify_display_status(core, msg);
-			break;
-		case SalReasonDoNotDisturb:
-			linphone_core_notify_display_status(core, msg600);
-			break;
-		case SalReasonUnsupportedContent: /* This is for compatibility: linphone sent 415 because of SDP offer answer failure */
-		case SalReasonNotAcceptable:
-			break;
 		default:
-			linphone_core_notify_display_status(core, "Call failed.");
 			break;
 	}
 
@@ -356,24 +307,22 @@ bool CallSessionPrivate::failure () {
 }
 
 void CallSessionPrivate::pingReply () {
-	L_Q(CallSession);
+	L_Q();
 	if (state == LinphoneCallOutgoingInit) {
 		pingReplied = true;
 		if (isReadyForInvite())
-			q->startInvite(nullptr);
+			q->startInvite(nullptr, "");
 	}
 }
 
 void CallSessionPrivate::remoteRinging () {
-	L_Q(CallSession);
+	L_Q();
 	/* Set privacy */
 	q->getCurrentParams()->setPrivacy((LinphonePrivacyMask)op->get_privacy());
-	linphone_core_notify_display_status(core, _("Remote ringing."));
 #if 0
 	if (lc->ringstream == NULL) start_remote_ring(lc, call);
 #endif
 	lInfo() << "Remote ringing...";
-	linphone_core_notify_display_status(core, _("Remote ringing..."));
 	setState(LinphoneCallOutgoingRinging, "Remote ringing");
 }
 
@@ -401,8 +350,6 @@ void CallSessionPrivate::terminated () {
 		linphone_core_stop_ringing(lc);
 	}
 #endif
-	linphone_core_notify_show_interface(core);
-	linphone_core_notify_display_status(core, _("Call terminated."));
 	setState(LinphoneCallEnd, "Call ended");
 }
 
@@ -454,8 +401,7 @@ void CallSessionPrivate::updated (bool isUpdate) {
 }
 
 void CallSessionPrivate::updatedByRemote () {
-	L_Q(CallSession);
-	linphone_core_notify_display_status(core, "Call is updated by remote");
+	L_Q();
 	setState(LinphoneCallUpdatedByRemote,"Call updated by remote");
 	if (deferUpdate) {
 		if (state == LinphoneCallUpdatedByRemote)
@@ -476,28 +422,27 @@ void CallSessionPrivate::updating (bool isUpdate) {
 
 // -----------------------------------------------------------------------------
 
-void CallSessionPrivate::accept (const shared_ptr<CallSessionParams> params) {
-	L_Q(CallSession);
+void CallSessionPrivate::accept (const CallSessionParams *params) {
+	L_Q();
 	/* Try to be best-effort in giving real local or routable contact address */
 	setContactOp();
 	if (params) {
-		this->params = params;
-		op->set_sent_custom_header(params->getPrivate()->getCustomHeaders());
+		this->params = new CallSessionParams(*params);
+		op->set_sent_custom_header(this->params->getPrivate()->getCustomHeaders());
 	}
 
 	op->accept();
-	linphone_core_notify_display_status(core, _("Connected."));
 	if (listener)
-		listener->setCurrentSession(*q);
+		listener->onSetCurrentSession(*q);
 	setState(LinphoneCallConnected, "Connected");
 }
 
-LinphoneStatus CallSessionPrivate::acceptUpdate (const shared_ptr<CallSessionParams> csp, LinphoneCallState nextState, const string &stateInfo) {
+LinphoneStatus CallSessionPrivate::acceptUpdate (const CallSessionParams *csp, LinphoneCallState nextState, const string &stateInfo) {
 	return startAcceptUpdate(nextState, stateInfo);
 }
 
 LinphoneStatus CallSessionPrivate::checkForAcceptation () const {
-	L_Q(const CallSession);
+	L_Q();
 	switch (state) {
 		case LinphoneCallIncomingReceived:
 		case LinphoneCallIncomingEarlyMedia:
@@ -506,25 +451,8 @@ LinphoneStatus CallSessionPrivate::checkForAcceptation () const {
 			lError() << "checkForAcceptation() CallSession [" << q << "] is in state [" << linphone_call_state_to_string(state) << "], operation not permitted";
 			return -1;
 	}
-	bctbx_list_t *copy = bctbx_list_copy(linphone_core_get_calls(core));
-	for (bctbx_list_t *it = copy; it != nullptr; it = bctbx_list_next(it)) {
-		LinphoneCall *call = reinterpret_cast<LinphoneCall *>(bctbx_list_get_data(it));
-		shared_ptr<CallSession> session = linphone_call_get_cpp_obj(call)->getPrivate()->getActiveSession();
-		if (session.get() == q) continue;
-		switch (session->getState()) {
-			case LinphoneCallOutgoingInit:
-			case LinphoneCallOutgoingProgress:
-			case LinphoneCallOutgoingRinging:
-			case LinphoneCallOutgoingEarlyMedia:
-				lInfo() << "Already existing CallSession [" << session << "] in state [" << linphone_call_state_to_string(session->getState())
-					<< "], canceling it before accepting new CallSession [" << q << "]";
-				session->terminate();
-				break;
-			default:
-				break; /* Nothing to do */
-		}
-	}
-	bctbx_list_free(copy);
+	if (listener)
+		listener->onCheckForAcceptation(*q);
 
 	/* Check if this call is supposed to replace an already running one */
 	SalOp *replaced = op->get_replaces();
@@ -539,7 +467,7 @@ LinphoneStatus CallSessionPrivate::checkForAcceptation () const {
 }
 
 void CallSessionPrivate::handleIncomingReceivedStateInIncomingNotification () {
-	L_Q(CallSession);
+	L_Q();
 	/* Try to be best-effort in giving real local or routable contact address for 100Rel case */
 	setContactOp();
 	op->notify_ringing(false);
@@ -590,7 +518,7 @@ bool CallSessionPrivate::isUpdateAllowed (LinphoneCallState &nextState) const {
  * Called internally when reaching the Released state, to perform cleanups to break circular references.
 **/
 void CallSessionPrivate::setReleased () {
-	L_Q(CallSession);
+	L_Q();
 	if (op) {
 		/* Transfer the last error so that it can be obtained even in Released state */
 		if (!nonOpError)
@@ -615,7 +543,7 @@ void CallSessionPrivate::setReleased () {
 	}
 #endif
 	if (listener)
-		listener->callSessionSetReleased(*q);
+		listener->onCallSessionSetReleased(*q);
 }
 
 /* This method is called internally to get rid of a call that was notified to the application,
@@ -624,10 +552,10 @@ void CallSessionPrivate::setReleased () {
  * - update the call logs accordingly
  */
 void CallSessionPrivate::setTerminated() {
-	L_Q(CallSession);
+	L_Q();
 	completeLog();
 	if (listener)
-		listener->callSessionSetTerminated(*q);
+		listener->onCallSessionSetTerminated(*q);
 }
 
 LinphoneStatus CallSessionPrivate::startAcceptUpdate (LinphoneCallState nextState, const std::string &stateInfo) {
@@ -637,7 +565,7 @@ LinphoneStatus CallSessionPrivate::startAcceptUpdate (LinphoneCallState nextStat
 }
 
 LinphoneStatus CallSessionPrivate::startUpdate () {
-	L_Q(CallSession);
+	L_Q();
 	string subject;
 	if (q->getParams()->getPrivate()->getInConference())
 		subject = "Conference";
@@ -647,7 +575,6 @@ LinphoneStatus CallSessionPrivate::startUpdate () {
 		subject = "Refreshing";
 	else
 		subject = "Media change";
-	linphone_core_notify_display_status(core, "Modifying call parameters...");
 	if (destProxy && destProxy->op) {
 		/* Give a chance to update the contact address if connectivity has changed */
 		op->set_contact_address(destProxy->op->get_contact_address());
@@ -661,11 +588,10 @@ void CallSessionPrivate::terminate () {
 		linphone_error_info_set_reason(ei, LinphoneReasonDeclined);
 		nonOpError = true;
 	}
-	linphone_core_notify_display_status(core, _("Call ended"));
 	setState(LinphoneCallEnd, "Call terminated");
 }
 
-void CallSessionPrivate::updateCurrentParams () {}
+void CallSessionPrivate::updateCurrentParams () const {}
 
 // -----------------------------------------------------------------------------
 
@@ -673,11 +599,11 @@ void CallSessionPrivate::setContactOp () {
 	SalAddress *salAddress = nullptr;
 	LinphoneAddress *contact = getFixedContact();
 	if (contact) {
-		salAddress = const_cast<SalAddress *>(L_GET_PRIVATE_FROM_C_STRUCT(contact, Address)->getInternalAddress());
+		salAddress = const_cast<SalAddress *>(L_GET_PRIVATE_FROM_C_OBJECT(contact)->getInternalAddress());
 		sal_address_ref(salAddress);
 		linphone_address_unref(contact);
+		op->set_contact_address(salAddress);
 	}
-	op->set_and_clean_contact_address(salAddress);
 }
 
 // -----------------------------------------------------------------------------
@@ -685,17 +611,13 @@ void CallSessionPrivate::setContactOp () {
 void CallSessionPrivate::completeLog () {
 	log->duration = computeDuration(); /* Store duration since connected */
 	log->error_info = linphone_error_info_ref(ei);
-	if (log->status == LinphoneCallMissed) {
+	if (log->status == LinphoneCallMissed)
 		core->missed_calls++;
-		char *info = bctbx_strdup_printf(ngettext("You have missed %i call.", "You have missed %i calls.", core->missed_calls), core->missed_calls);
-		linphone_core_notify_display_status(core, info);
-		bctbx_free(info);
-	}
 	linphone_core_report_call_log(core, log);
 }
 
 void CallSessionPrivate::createOpTo (const LinphoneAddress *to) {
-	L_Q(CallSession);
+	L_Q();
 	if (op)
 		op->release();
 	op = new SalCall(core->sal);
@@ -723,12 +645,10 @@ LinphoneAddress * CallSessionPrivate::getFixedContact () const {
 		char *addr = sal_address_as_string(pingOp->get_contact_address());
 		result = linphone_address_new(addr);
 		ms_free(addr);
-	} else if (destProxy && destProxy->op && destProxy->op->get_contact_address()) {
+	} else if (destProxy && destProxy->op && _linphone_proxy_config_get_contact_without_params(destProxy)) {
 		/* If using a proxy, use the contact address as guessed with the REGISTERs */
 		lInfo() << "Contact has been fixed using proxy";
-		char *addr = sal_address_as_string(destProxy->op->get_contact_address());
-		result = linphone_address_new(addr);
-		ms_free(addr);
+		result = linphone_address_clone(_linphone_proxy_config_get_contact_without_params(destProxy));
 	} else {
 		result = linphone_core_get_primary_contact_parsed(core);
 		if (result) {
@@ -743,7 +663,7 @@ LinphoneAddress * CallSessionPrivate::getFixedContact () const {
 
 // =============================================================================
 
-CallSession::CallSession (const Conference &conference, const shared_ptr<CallSessionParams> params, CallSessionListener *listener)
+CallSession::CallSession (const Conference &conference, const CallSessionParams *params, CallSessionListener *listener)
 	: Object(*new CallSessionPrivate(conference, params, listener)) {
 	lInfo() << "New CallSession [" << this << "] initialized (LinphoneCore version: " << linphone_core_get_version() << ")";
 }
@@ -752,16 +672,16 @@ CallSession::CallSession (CallSessionPrivate &p) : Object(p) {}
 
 // -----------------------------------------------------------------------------
 
-LinphoneStatus CallSession::accept (const shared_ptr<CallSessionParams> csp) {
-	L_D(CallSession);
+LinphoneStatus CallSession::accept (const CallSessionParams *csp) {
+	L_D();
 	LinphoneStatus result = d->checkForAcceptation();
 	if (result < 0) return result;
 	d->accept(csp);
 	return 0;
 }
 
-LinphoneStatus CallSession::acceptUpdate (const shared_ptr<CallSessionParams> csp) {
-	L_D(CallSession);
+LinphoneStatus CallSession::acceptUpdate (const CallSessionParams *csp) {
+	L_D();
 	if (d->state != LinphoneCallUpdatedByRemote) {
 		lError() << "CallSession::acceptUpdate(): invalid state " << linphone_call_state_to_string(d->state) << " to call this method";
 		return -1;
@@ -770,7 +690,7 @@ LinphoneStatus CallSession::acceptUpdate (const shared_ptr<CallSessionParams> cs
 }
 
 void CallSession::configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalCall *op, const Address &from, const Address &to) {
-	L_D(CallSession);
+	L_D();
 	d->direction = direction;
 	d->destProxy = cfg;
 	LinphoneAddress *fromAddr = linphone_address_new(from.asString().c_str());
@@ -781,17 +701,11 @@ void CallSession::configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg
 	}
 	d->log = linphone_call_log_new(direction, fromAddr, toAddr);
 
-	if (d->destProxy)
-		d->natPolicy = linphone_proxy_config_get_nat_policy(d->destProxy);
-	if (!d->natPolicy)
-		d->natPolicy = linphone_core_get_nat_policy(d->core);
-	linphone_nat_policy_ref(d->natPolicy);
-
 	if (op) {
 		/* We already have an op for incoming calls */
 		d->op = op;
 		d->op->set_user_pointer(this);
-		op->enable_cnx_ip_to_0000_if_sendonly(lp_config_get_default_int(linphone_core_get_config(d->core),
+		op->enable_cnx_ip_to_0000_if_sendonly(!!lp_config_get_default_int(linphone_core_get_config(d->core),
 			"sip", "cnx_ip_to_0000_if_sendonly_enabled", 0));
 		d->log->call_id = ms_strdup(op->get_call_id()); /* Must be known at that time */
 	}
@@ -799,7 +713,7 @@ void CallSession::configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg
 	if (direction == LinphoneCallOutgoing) {
 		d->startPing();
 	} else if (direction == LinphoneCallIncoming) {
-		d->params = make_shared<CallSessionParams>();
+		d->params = new CallSessionParams();
 		d->params->initDefault(d->core);
 	}
 }
@@ -813,7 +727,7 @@ LinphoneStatus CallSession::decline (LinphoneReason reason) {
 }
 
 LinphoneStatus CallSession::decline (const LinphoneErrorInfo *ei) {
-	L_D(CallSession);
+	L_D();
 	SalErrorInfo sei;
 	SalErrorInfo sub_sei;
 	memset(&sei, 0, sizeof(sei));
@@ -837,7 +751,7 @@ LinphoneStatus CallSession::decline (const LinphoneErrorInfo *ei) {
 void CallSession::initiateIncoming () {}
 
 bool CallSession::initiateOutgoing () {
-	L_D(CallSession);
+	L_D();
 	bool defer = false;
 	d->setState(LinphoneCallOutgoingInit, "Starting outgoing call");
 	d->log->start_date_time = ms_time(nullptr);
@@ -850,11 +764,11 @@ bool CallSession::initiateOutgoing () {
 }
 
 void CallSession::iterate (time_t currentRealTime, bool oneSecondElapsed) {
-	L_D(CallSession);
+	L_D();
 	int elapsed = (int)(currentRealTime - d->log->start_date_time);
 	if ((d->state == LinphoneCallOutgoingInit) && (elapsed >= d->core->sip_conf.delayed_timeout)) {
 		/* Start the call even if the OPTIONS reply did not arrive */
-		startInvite(nullptr);
+		startInvite(nullptr, "");
 	}
 	if ((d->state == LinphoneCallIncomingReceived) || (d->state == LinphoneCallIncomingEarlyMedia)) {
 		if (oneSecondElapsed)
@@ -880,33 +794,23 @@ void CallSession::iterate (time_t currentRealTime, bool oneSecondElapsed) {
 }
 
 void CallSession::startIncomingNotification () {
-	L_D(CallSession);
+	L_D();
 	if (d->listener)
-		d->listener->callSessionAccepted(*this);
+		d->listener->onCallSessionAccepted(*this);
 	/* Prevent the CallSession from being destroyed while we are notifying, if the user declines within the state callback */
-	shared_ptr<CallSession> ref = shared_from_this();
+	shared_ptr<CallSession> ref = static_pointer_cast<CallSession>(shared_from_this());
 #if 0
 	call->bg_task_id=sal_begin_background_task("liblinphone call notification", NULL, NULL);
 #endif
 	if (d->deferIncomingNotification) {
-		lInfo() << "Defer ringing";
+		lInfo() << "Defer incoming notification";
 		return;
 	}
 
-	LinphoneAddress *fromParsed = linphone_address_new(d->op->get_from());
-	linphone_address_clean(fromParsed);
-	char *tmp = linphone_address_as_string(fromParsed);
-	linphone_address_unref(fromParsed);
-	char *msg = ms_strdup_printf("%s %s%s", tmp, _("is contacting you"), (d->op->autoanswer_asked()) ? _(" and asked autoanswer") : "");
-	ms_free(tmp);
-	linphone_core_notify_show_interface(d->core);
-	linphone_core_notify_display_status(d->core, msg);
-	ms_free(msg);
-
 	if (d->listener)
-		d->listener->incomingCallSessionStarted(*this);
+		d->listener->onIncomingCallSessionStarted(*this);
 
-	d->setState(LinphoneCallIncomingReceived, "Incoming call");
+	d->setState(LinphoneCallIncomingReceived, "Incoming CallSession");
 
 	/* From now on, the application is aware of the call and supposed to take background task or already submitted notification to the user.
 	 * We can then drop our background task. */
@@ -922,8 +826,8 @@ void CallSession::startIncomingNotification () {
 	}
 }
 
-int CallSession::startInvite (const Address *destination) {
-	L_D(CallSession);
+int CallSession::startInvite (const Address *destination, const string &subject) {
+	L_D();
 	/* Try to be best-effort in giving real local or routable contact address */
 	d->setContactOp();
 	string destinationStr;
@@ -935,19 +839,15 @@ int CallSession::startInvite (const Address *destination) {
 		destinationStr = realUrl;
 		ms_free(realUrl);
 	}
-	ostringstream os;
-	os << "Contacting " << destinationStr;
-	linphone_core_notify_display_status(d->core, os.str().c_str());
 	char *from = linphone_address_as_string(d->log->from);
 	/* Take a ref because sal_call() may destroy the CallSession if no SIP transport is available */
-	shared_ptr<CallSession> ref = shared_from_this();
-	int result = d->op->call(from, destinationStr.c_str());
+	shared_ptr<CallSession> ref = static_pointer_cast<CallSession>(shared_from_this());
+	int result = d->op->call(from, destinationStr.c_str(), subject.empty() ? nullptr : subject.c_str());
 	ms_free(from);
 	if (result < 0) {
 		if ((d->state != LinphoneCallError) && (d->state != LinphoneCallReleased)) {
 			/* sal_call() may invoke call_failure() and call_released() SAL callbacks synchronously,
 			   in which case there is no need to perform a state change here. */
-			linphone_core_notify_display_status(d->core, _("Could not call"));
 			d->setState(LinphoneCallError, "Call failed");
 		}
 	} else {
@@ -958,7 +858,7 @@ int CallSession::startInvite (const Address *destination) {
 }
 
 LinphoneStatus CallSession::terminate (const LinphoneErrorInfo *ei) {
-	L_D(CallSession);
+	L_D();
 	lInfo() << "Terminate CallSession [" << this << "] which is currently in state [" << linphone_call_state_to_string(d->state) << "]";
 	SalErrorInfo sei;
 	memset(&sei, 0, sizeof(sei));
@@ -990,13 +890,13 @@ LinphoneStatus CallSession::terminate (const LinphoneErrorInfo *ei) {
 	return 0;
 }
 
-LinphoneStatus CallSession::update (const shared_ptr<CallSessionParams> csp) {
-	L_D(CallSession);
+LinphoneStatus CallSession::update (const CallSessionParams *csp) {
+	L_D();
 	LinphoneCallState nextState;
 	LinphoneCallState initialState = d->state;
 	if (!d->isUpdateAllowed(nextState))
 		return -1;
-	if (d->currentParams.get() == csp.get())
+	if (d->currentParams == csp)
 		lWarning() << "CallSession::update() is given the current params, this is probably not what you intend to do!";
 	LinphoneStatus result = d->startUpdate();
 	if (result && (d->state != initialState)) {
@@ -1009,12 +909,12 @@ LinphoneStatus CallSession::update (const shared_ptr<CallSessionParams> csp) {
 // -----------------------------------------------------------------------------
 
 LinphoneCallDir CallSession::getDirection () const {
-	L_D(const CallSession);
+	L_D();
 	return d->direction;
 }
 
 int CallSession::getDuration () const {
-	L_D(const CallSession);
+	L_D();
 	switch (d->state) {
 		case LinphoneCallEnd:
 		case LinphoneCallError:
@@ -1026,14 +926,14 @@ int CallSession::getDuration () const {
 }
 
 const LinphoneErrorInfo * CallSession::getErrorInfo () const {
-	L_D(const CallSession);
+	L_D();
 	if (!d->nonOpError)
 		linphone_error_info_from_sal_op(d->ei, d->op);
 	return d->ei;
 }
 
 LinphoneCallLog * CallSession::getLog () const {
-	L_D(const CallSession);
+	L_D();
 	return d->log;
 }
 
@@ -1042,10 +942,9 @@ LinphoneReason CallSession::getReason () const {
 }
 
 const Address& CallSession::getRemoteAddress () const {
-	L_D(const CallSession);
-	return *L_GET_CPP_PTR_FROM_C_STRUCT((d->direction == LinphoneCallIncoming)
-		? linphone_call_log_get_from(d->log) : linphone_call_log_get_to(d->log),
-		Address);
+	L_D();
+	return *L_GET_CPP_PTR_FROM_C_OBJECT((d->direction == LinphoneCallIncoming)
+		? linphone_call_log_get_from(d->log) : linphone_call_log_get_to(d->log));
 }
 
 string CallSession::getRemoteAddressAsString () const {
@@ -1053,7 +952,7 @@ string CallSession::getRemoteAddressAsString () const {
 }
 
 string CallSession::getRemoteContact () const {
-	L_D(const CallSession);
+	L_D();
 	if (d->op) {
 		/* sal_op_get_remote_contact preserves header params */
 		return d->op->get_remote_contact();
@@ -1061,14 +960,14 @@ string CallSession::getRemoteContact () const {
 	return string();
 }
 
-const shared_ptr<CallSessionParams> CallSession::getRemoteParams () {
-	L_D(CallSession);
+const CallSessionParams * CallSession::getRemoteParams () {
+	L_D();
 	if (d->op){
 		const SalCustomHeader *ch = d->op->get_recv_custom_header();
 		if (ch) {
 			/* Instanciate a remote_params only if a SIP message was received before (custom headers indicates this) */
 			if (!d->remoteParams)
-				d->remoteParams = make_shared<CallSessionParams>();
+				d->remoteParams = new CallSessionParams();
 			d->remoteParams->getPrivate()->setCustomHeaders(ch);
 		}
 		return d->remoteParams;
@@ -1077,29 +976,29 @@ const shared_ptr<CallSessionParams> CallSession::getRemoteParams () {
 }
 
 LinphoneCallState CallSession::getState () const {
-	L_D(const CallSession);
+	L_D();
 	return d->state;
 }
 
 // -----------------------------------------------------------------------------
 
 string CallSession::getRemoteUserAgent () const {
-	L_D(const CallSession);
+	L_D();
 	if (d->op)
 		return d->op->get_remote_ua();
 	return string();
 }
 
-shared_ptr<CallSessionParams> CallSession::getCurrentParams () {
-	L_D(CallSession);
+CallSessionParams * CallSession::getCurrentParams () const {
+	L_D();
 	d->updateCurrentParams();
 	return d->currentParams;
 }
 
 // -----------------------------------------------------------------------------
 
-const shared_ptr<CallSessionParams> CallSession::getParams () const {
-	L_D(const CallSession);
+const CallSessionParams * CallSession::getParams () const {
+	L_D();
 	return d->params;
 }
 

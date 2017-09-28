@@ -19,45 +19,75 @@
 #ifndef _CONFERENCE_H_
 #define _CONFERENCE_H_
 
-#include <memory>
+#include "linphone/types.h"
 
-#include "object/object.h"
 #include "address/address.h"
 #include "call/call-listener.h"
 #include "conference/conference-interface.h"
 #include "conference/params/call-session-params.h"
 #include "conference/participant.h"
-
-#include "linphone/types.h"
+#include "conference/session/call-session-listener.h"
 
 // =============================================================================
 
 LINPHONE_BEGIN_NAMESPACE
 
-class ConferencePrivate;
 class CallSessionPrivate;
 
-class Conference : public Object, public ConferenceInterface {
+class Conference : public ConferenceInterface, public CallSessionListener {
 	friend class CallSessionPrivate;
 
 public:
+	virtual ~Conference() = default;
+
 	std::shared_ptr<Participant> getActiveParticipant () const;
-	std::shared_ptr<Participant> getMe () const;
+	std::shared_ptr<Participant> getMe () const { return me; }
 
+	LinphoneCore * getCore () const { return core; }
+
+public:
 	/* ConferenceInterface */
-	virtual std::shared_ptr<Participant> addParticipant (const Address &addr, const std::shared_ptr<CallSessionParams> params, bool hasMedia);
-	virtual void addParticipants (const std::list<const Address> &addresses, const std::shared_ptr<CallSessionParams> params, bool hasMedia);
-	virtual const std::string& getId () const;
-	virtual int getNbParticipants () const;
-	virtual std::list<std::shared_ptr<Participant>> getParticipants () const;
-	virtual void removeParticipant (const std::shared_ptr<Participant> participant);
-	virtual void removeParticipants (const std::list<const std::shared_ptr<Participant>> participants);
-
-protected:
-	explicit Conference (ConferencePrivate &p, LinphoneCore *core, const Address &myAddress, CallListener *listener = nullptr);
+	std::shared_ptr<Participant> addParticipant (const Address &addr, const CallSessionParams *params, bool hasMedia) override;
+	void addParticipants (const std::list<Address> &addresses, const CallSessionParams *params, bool hasMedia) override;
+	bool canHandleParticipants () const override;
+	const Address *getConferenceAddress () const override;
+	int getNbParticipants () const override;
+	std::list<std::shared_ptr<Participant>> getParticipants () const override;
+	void removeParticipant (const std::shared_ptr<const Participant> &participant) override;
+	void removeParticipants (const std::list<std::shared_ptr<Participant>> &participants) override;
 
 private:
-	L_DECLARE_PRIVATE(Conference);
+	/* CallSessionListener */
+	void onAckBeingSent (const CallSession &session, LinphoneHeaders *headers) override;
+	void onAckReceived (const CallSession &session, LinphoneHeaders *headers) override;
+	void onCallSessionAccepted (const CallSession &session) override;
+	void onCallSessionSetReleased (const CallSession &session) override;
+	void onCallSessionSetTerminated (const CallSession &session) override;
+	void onCallSessionStateChanged (const CallSession &session, LinphoneCallState state, const std::string &message) override;
+	void onCheckForAcceptation (const CallSession &session) override;
+	void onIncomingCallSessionStarted (const CallSession &session) override;
+	void onEncryptionChanged (const CallSession &session, bool activated, const std::string &authToken) override;
+	void onStatsUpdated (const LinphoneCallStats *stats) override;
+	void onResetCurrentSession (const CallSession &session) override;
+	void onSetCurrentSession (const CallSession &session) override;
+	void onFirstVideoFrameDecoded (const CallSession &session) override;
+	void onResetFirstVideoFrameDecoded (const CallSession &session) override;
+
+protected:
+	explicit Conference (LinphoneCore *core, const Address &myAddress, CallListener *listener = nullptr);
+
+	std::shared_ptr<Participant> findParticipant (const Address &addr);
+
+protected:
+	LinphoneCore *core = nullptr;
+	CallListener *callListener = nullptr;
+
+	std::shared_ptr<Participant> activeParticipant;
+	std::shared_ptr<Participant> me;
+	std::list<std::shared_ptr<Participant>> participants;
+	Address conferenceAddress;
+
+private:
 	L_DISABLE_COPY(Conference);
 };
 

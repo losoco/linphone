@@ -20,9 +20,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "linphone/account_creator.h"
 #include "linphone/core.h"
 #include "linphone/lpconfig.h"
-#include "private.h"
+
+#include "c-wrapper/c-wrapper.h"
+
 #if !_WIN32
-#include "regex.h"
+	#include "regex.h"
 #endif
 
 #include <bctoolbox/crypto.h>
@@ -45,7 +47,7 @@ static const char* ha1_for_passwd(const char* username, const char* realm, const
 
 static unsigned int validate_uri(const char* username, const char* domain, const char* display_name) {
 	LinphoneAddress* addr;
-	int status = 0;
+	unsigned int status = 0;
 	LinphoneProxyConfig* proxy = linphone_proxy_config_new();
 	linphone_proxy_config_set_identity(proxy, "sip:?@domain.com");
 
@@ -348,7 +350,7 @@ void linphone_account_creator_set_user_data(LinphoneAccountCreator *creator, voi
 LinphoneAccountCreatorUsernameStatus linphone_account_creator_set_username(LinphoneAccountCreator *creator, const char *username) {
 	int min_length = lp_config_get_int(creator->core->config, "assistant", "username_min_length", -1);
 	int max_length = lp_config_get_int(creator->core->config, "assistant", "username_max_length", -1);
-	bool_t use_phone_number = lp_config_get_int(creator->core->config, "assistant", "use_phone_number", 0);
+	bool_t use_phone_number = !!lp_config_get_int(creator->core->config, "assistant", "use_phone_number", 0);
 	const char* regex = lp_config_get_string(creator->core->config, "assistant", "username_regex", 0);
 	if (!username) {
 		creator->username = NULL;

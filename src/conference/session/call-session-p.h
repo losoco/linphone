@@ -19,9 +19,6 @@
 #ifndef _CALL_SESSION_P_H_
 #define _CALL_SESSION_P_H_
 
-#include <memory>
-#include <string>
-
 #include "object/object-p.h"
 
 #include "call-session.h"
@@ -33,7 +30,7 @@ LINPHONE_BEGIN_NAMESPACE
 
 class CallSessionPrivate : public ObjectPrivate {
 public:
-	CallSessionPrivate (const Conference &conference, const std::shared_ptr<CallSessionParams> params, CallSessionListener *listener);
+	CallSessionPrivate (const Conference &conference, const CallSessionParams *params, CallSessionListener *listener);
 	virtual ~CallSessionPrivate ();
 
 	int computeDuration () const;
@@ -58,8 +55,8 @@ public:
 	virtual void updating (bool isUpdate);
 
 protected:
-	void accept (const std::shared_ptr<CallSessionParams> params);
-	virtual LinphoneStatus acceptUpdate (const std::shared_ptr<CallSessionParams> csp, LinphoneCallState nextState, const std::string &stateInfo);
+	void accept (const CallSessionParams *params);
+	virtual LinphoneStatus acceptUpdate (const CallSessionParams *csp, LinphoneCallState nextState, const std::string &stateInfo);
 	LinphoneStatus checkForAcceptation () const;
 	virtual void handleIncomingReceivedStateInIncomingNotification ();
 	virtual bool isReadyForInvite () const;
@@ -69,7 +66,7 @@ protected:
 	virtual LinphoneStatus startAcceptUpdate (LinphoneCallState nextState, const std::string &stateInfo);
 	virtual LinphoneStatus startUpdate ();
 	virtual void terminate ();
-	virtual void updateCurrentParams ();
+	virtual void updateCurrentParams () const;
 
 	void setContactOp ();
 
@@ -84,9 +81,9 @@ protected:
 	LinphoneCore *core = nullptr;
 	CallSessionListener *listener = nullptr;
 
-	std::shared_ptr<CallSessionParams> params = nullptr;
-	std::shared_ptr<CallSessionParams> currentParams = nullptr;
-	std::shared_ptr<CallSessionParams> remoteParams = nullptr;
+	CallSessionParams *params = nullptr;
+	mutable CallSessionParams *currentParams = nullptr;
+	CallSessionParams *remoteParams = nullptr;
 
 	LinphoneCallDir direction = LinphoneCallOutgoing;
 	LinphoneCallState state = LinphoneCallIdle;
@@ -95,7 +92,6 @@ protected:
 	LinphoneProxyConfig *destProxy = nullptr;
 	LinphoneErrorInfo *ei = nullptr;
 	LinphoneCallLog *log = nullptr;
-	LinphoneNatPolicy *natPolicy = nullptr;
 
 	SalCall *op = nullptr;
 
@@ -107,6 +103,7 @@ protected:
 	bool deferUpdate = false;
 	bool nonOpError = false; /* Set when the LinphoneErrorInfo was set at higher level than sal */
 
+private:
 	L_DECLARE_PUBLIC(CallSession);
 };
 

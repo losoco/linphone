@@ -142,34 +142,6 @@ LINPHONE_PUBLIC const LinphoneAddress * linphone_core_get_current_call_remote_ad
 
 /**
  * Callback prototype
- * @deprecated
- * @donotwrap
- */
-typedef void (*ShowInterfaceCb)(LinphoneCore *lc);
-
-/**
- * Callback prototype
- * @deprecated
- * @donotwrap
- */
-typedef void (*DisplayStatusCb)(LinphoneCore *lc, const char *message);
-
-/**
- * Callback prototype
- * @deprecated
- * @donotwrap
- */
-typedef void (*DisplayMessageCb)(LinphoneCore *lc, const char *message);
-
-/**
- * Callback prototype
- * @deprecated
- * @donotwrap
- */
-typedef void (*DisplayUrlCb)(LinphoneCore *lc, const char *message, const char *url);
-
-/**
- * Callback prototype
  */
 typedef void (*LinphoneCoreCbFunc)(LinphoneCore *lc,void * user_data);
 
@@ -202,11 +174,6 @@ typedef struct _LinphoneCoreVTable{
 	LinphoneCoreNotifyReceivedCb notify_received; /**< Notifies a an event notification, see linphone_core_subscribe() */
 	LinphoneCorePublishStateChangedCb publish_state_changed;/**Notifies publish state change (only from #LinphoneEvent api)*/
 	LinphoneCoreConfiguringStatusCb configuring_status; /** Notifies configuring status changes */
-	LINPHONE_DEPRECATED DisplayStatusCb display_status; /**< @deprecated Callback that notifies various events with human readable text.*/
-	LINPHONE_DEPRECATED DisplayMessageCb display_message;/**< @deprecated Callback to display a message to the user */
-	LINPHONE_DEPRECATED DisplayMessageCb display_warning;/**< @deprecated Callback to display a warning to the user */
-	LINPHONE_DEPRECATED DisplayUrlCb display_url; /**< @deprecated */
-	LINPHONE_DEPRECATED ShowInterfaceCb show; /**< vNotifies the application that it should show up*/
 	LINPHONE_DEPRECATED LinphoneCoreTextMessageReceivedCb text_received; /**< @deprecated, use #message_received instead <br> A text message has been received */
 	LINPHONE_DEPRECATED LinphoneCoreFileTransferRecvCb file_transfer_recv; /**< @deprecated Callback to store file received attached to a #LinphoneChatMessage */
 	LINPHONE_DEPRECATED LinphoneCoreFileTransferSendCb file_transfer_send; /**< @deprecated Callback to collect file chunk to be sent for a #LinphoneChatMessage */
@@ -218,6 +185,7 @@ typedef struct _LinphoneCoreVTable{
 	LinphoneCoreFriendListRemovedCb friend_list_removed;
 	LinphoneCoreCbsCallCreatedCb call_created;
 	LinphoneCoreCbsVersionUpdateCheckResultReceivedCb version_update_check_result_received;
+	LinphoneCoreCbsChatRoomInstantiatedCb chat_room_instantiated;
 	void *user_data; /**<User data associated with the above callbacks */
 } LinphoneCoreVTable;
 
@@ -675,6 +643,20 @@ LINPHONE_PUBLIC void linphone_core_cbs_set_version_update_check_result_received(
  * @return The current callback
  */
 LINPHONE_PUBLIC LinphoneCoreCbsVersionUpdateCheckResultReceivedCb linphone_core_cbs_get_version_update_check_result_received(LinphoneCoreCbs *cbs);
+
+/**
+ * Get the chat room instantiated callback.
+ * @param[in] cbs LinphoneCoreCbs object
+ * @return The current callback
+ */
+LINPHONE_PUBLIC LinphoneCoreCbsChatRoomInstantiatedCb linphone_core_cbs_get_chat_room_instantiated (LinphoneCoreCbs *cbs);
+
+/**
+ * Set the chat room instantiated callback.
+ * @param[in] cbs LinphoneCoreCbs object
+ * @param[in] cb The callback to use
+ */
+LINPHONE_PUBLIC void linphone_core_cbs_set_chat_room_instantiated (LinphoneCoreCbs *cbs, LinphoneCoreCbsChatRoomInstantiatedCb cb);
 
 /**
  * @}
@@ -3908,7 +3890,7 @@ LINPHONE_PUBLIC void linphone_core_set_user_data(LinphoneCore *lc, void *userdat
  * sections and pairs of key=value in the configuration file.
  * @ingroup misc
 **/
-LINPHONE_PUBLIC LinphoneConfig * linphone_core_get_config(LinphoneCore *lc);
+LINPHONE_PUBLIC LinphoneConfig * linphone_core_get_config(const LinphoneCore *lc);
 
 /**
  * Create a LpConfig object from a user config file.
@@ -4186,6 +4168,20 @@ LINPHONE_PUBLIC LinphoneStatus linphone_core_stop_conference_recording(LinphoneC
  * @return A pointer on #LinphoneConference or NULL if no conference are going on
  */
 LINPHONE_PUBLIC LinphoneConference *linphone_core_get_conference(LinphoneCore *lc);
+
+/**
+ * Set the conference factory uri.
+ * @param[in] lc A #LinphoneCore object
+ * @param[in] uri The uri of the conference factory
+ */
+void linphone_core_set_conference_factory_uri(LinphoneCore *lc, const char *uri);
+
+/**
+ * Get the conference factory uri.
+ * @param[in] lc A #LinphoneCore object
+ * @return The uri of the conference factory
+ */
+const char * linphone_core_get_conference_factory_uri(const LinphoneCore *lc);
 
 /**
  * @}
@@ -4835,6 +4831,16 @@ LINPHONE_PUBLIC void linphone_core_set_chat_database_path(LinphoneCore *lc, cons
  * @return file path or NULL if not exist
  **/
 LINPHONE_PUBLIC const char *linphone_core_get_chat_database_path(const LinphoneCore *lc);
+
+/**
+ * Create a client-side group chat room. When calling this function the chat room is only created
+ * at the client-side and is empty. Pou need to call linphone_chat_room_add_participants() to
+ * create at the server side and add participants to it.
+ * @param[in] lc A #LinphoneCore object
+ * @param[in] subject The subject of the group chat room
+ * @return The newly created client-side group chat room.
+ */
+LINPHONE_PUBLIC LinphoneChatRoom * linphone_core_create_client_group_chat_room(LinphoneCore *lc, const char *subject);
 
 /**
  * Get a chat room whose peer is the supplied address. If it does not exist yet, it will be created.

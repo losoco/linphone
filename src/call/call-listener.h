@@ -19,8 +19,6 @@
 #ifndef _CALL_LISTENER_H_
 #define _CALL_LISTENER_H_
 
-#include <string>
-
 #include "linphone/types.h"
 
 // =============================================================================
@@ -29,23 +27,26 @@ LINPHONE_BEGIN_NAMESPACE
 
 class CallListener {
 public:
-	virtual void ackBeingSent (LinphoneHeaders *headers) = 0;
-	virtual void ackReceived (LinphoneHeaders *headers) = 0;
-	virtual void callSetReleased () = 0;
-	virtual void callSetTerminated () = 0;
-	virtual void callStateChanged (LinphoneCallState state, const std::string &message) = 0;
-	virtual void incomingCallStarted () = 0;
-	virtual void incomingCallToBeAdded () = 0;
+	virtual ~CallListener () = default;
 
-	virtual void encryptionChanged (bool activated, const std::string &authToken) = 0;
+	virtual void onAckBeingSent (LinphoneHeaders *headers) = 0;
+	virtual void onAckReceived (LinphoneHeaders *headers) = 0;
+	virtual void onCallSetReleased () = 0;
+	virtual void onCallSetTerminated () = 0;
+	virtual void onCallStateChanged (LinphoneCallState state, const std::string &message) = 0;
+	virtual void onCheckForAcceptation () = 0;
+	virtual void onIncomingCallStarted () = 0;
+	virtual void onIncomingCallToBeAdded () = 0;
 
-	virtual void statsUpdated (const LinphoneCallStats *stats) = 0;
+	virtual void onEncryptionChanged (bool activated, const std::string &authToken) = 0;
 
-	virtual void resetCurrentCall () = 0;
-	virtual void setCurrentCall () = 0;
+	virtual void onStatsUpdated (const LinphoneCallStats *stats) = 0;
 
-	virtual void firstVideoFrameDecoded () = 0;
-	virtual void resetFirstVideoFrameDecoded () = 0;
+	virtual void onResetCurrentCall () = 0;
+	virtual void onSetCurrentCall () = 0;
+
+	virtual void onFirstVideoFrameDecoded () = 0;
+	virtual void onResetFirstVideoFrameDecoded () = 0;
 };
 
 LINPHONE_END_NAMESPACE

@@ -20,20 +20,30 @@
 #define _LOCAL_CONFERENCE_H_
 
 #include "conference.h"
+#include "local-conference-event-handler.h"
 
 // =============================================================================
 
 LINPHONE_BEGIN_NAMESPACE
 
-class LocalConferencePrivate;
-
 class LocalConference : public Conference {
 public:
 	LocalConference (LinphoneCore *core, const Address &myAddress, CallListener *listener = nullptr);
+	virtual ~LocalConference();
+
+	LocalConferenceEventHandler * getEventHandler() const { return eventHandler; }
+
+public:
+	/* ConferenceInterface */
+	std::shared_ptr<Participant> addParticipant (const Address &addr, const CallSessionParams *params, bool hasMedia) override;
+	void removeParticipant (const std::shared_ptr<const Participant> &participant) override;
+
+	std::list<Address> parseResourceLists (std::string xmlBody);
 
 private:
-	L_DECLARE_PRIVATE(LocalConference);
 	L_DISABLE_COPY(LocalConference);
+
+	LocalConferenceEventHandler *eventHandler = nullptr;
 };
 
 LINPHONE_END_NAMESPACE

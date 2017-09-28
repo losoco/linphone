@@ -19,6 +19,7 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,26 @@
 LINPHONE_BEGIN_NAMESPACE
 
 namespace Utils {
+	template<typename T>
+	LINPHONE_PUBLIC constexpr T *getPtr (const std::shared_ptr<T> &object) {
+		return object.get();
+	}
+
+	template<typename T>
+	LINPHONE_PUBLIC constexpr T *getPtr (T *object) {
+		return object;
+	}
+
+	template<typename T>
+	LINPHONE_PUBLIC constexpr const T *getPtr (const std::shared_ptr<const T> &object) {
+		return object.get();
+	}
+
+	template<typename T>
+	LINPHONE_PUBLIC constexpr const T *getPtr (const T *object) {
+		return object;
+	}
+
 	LINPHONE_PUBLIC bool iequals (const std::string &a, const std::string &b);
 
 	LINPHONE_PUBLIC std::vector<std::string> split (const std::string &str, const std::string &delimiter);
@@ -46,8 +67,22 @@ namespace Utils {
 	LINPHONE_PUBLIC std::string toString (float val);
 	LINPHONE_PUBLIC std::string toString (double val);
 	LINPHONE_PUBLIC std::string toString (long double val);
+	LINPHONE_PUBLIC std::string toString (const void *val);
 
 	LINPHONE_PUBLIC int stoi (const std::string &str, size_t *idx = 0, int base = 10);
+	LINPHONE_PUBLIC long long stoll (const std::string &str, size_t *idx = 0, int base = 10);
+	LINPHONE_PUBLIC unsigned long long stoull (const std::string &str, size_t *idx = 0, int base = 10);
+	LINPHONE_PUBLIC double stod (const std::string &str, size_t *idx = 0);
+	LINPHONE_PUBLIC float stof (const std::string &str, size_t *idx = 0);
+	LINPHONE_PUBLIC bool stob (const std::string &str);
+
+	LINPHONE_PUBLIC int stoi (const char *str, size_t *idx = 0, int base = 10);
+	LINPHONE_PUBLIC long long stoll (const char *str, size_t *idx = 0, int base = 10);
+	LINPHONE_PUBLIC unsigned long long stoull (const char *str, size_t *idx = 0, int base = 10);
+	LINPHONE_PUBLIC double stod (const char *str, size_t *idx = 0);
+	LINPHONE_PUBLIC float stof (const char *str, size_t *idx = 0);
+
+	LINPHONE_PUBLIC std::string stringToLower (const std::string &str);
 
 	// Return a buffer allocated with new.
 	LINPHONE_PUBLIC char *utf8ToChar (uint32_t ic);

@@ -86,7 +86,7 @@ void sal_set_log_level(OrtpLogLevel level) {
 	if (((level&ORTP_DEBUG) != 0) || ((level&ORTP_TRACE) != 0)) {
 		belle_sip_level = BELLE_SIP_LOG_DEBUG;
 	}
-	
+
 	belle_sip_set_log_level(belle_sip_level);
 }
 static BctbxLogFunc _belle_sip_log_handler = bctbx_logv_out;
@@ -219,7 +219,7 @@ static void process_request_event(void *ud, const belle_sip_request_event_t *eve
 
 	if (dialog) {
 		op=(SalOp*)belle_sip_dialog_get_application_data(dialog);
-		
+
 		if (op == NULL  && strcmp("NOTIFY",method) == 0) {
 			/*special case for Dialog created by notify mathing subscribe*/
 			belle_sip_transaction_t * sub_trans = belle_sip_dialog_get_last_transaction(dialog);
@@ -644,7 +644,7 @@ static int sal_add_listen_port(Sal *ctx, SalAddress* addr, bool_t is_tunneled){
 									sal_transport_to_string(sal_address_get_transport(addr)));
 	}
 	if (lp) {
-		belle_sip_listening_point_set_keep_alive(lp,ctx->keep_alive);
+		belle_sip_listening_point_set_keep_alive(lp,(int)ctx->keep_alive);
 		result = belle_sip_provider_add_listening_point(ctx->prov,lp);
 		if (sal_address_get_transport(addr)==SalTransportTLS) {
 			set_tls_properties(ctx);
@@ -661,7 +661,7 @@ int sal_listen_port(Sal *ctx, const char *addr, int port, SalTransport tr, int i
 	sal_address_set_domain(sal_addr,addr);
 	sal_address_set_port(sal_addr,port);
 	sal_address_set_transport(sal_addr,tr);
-	result = sal_add_listen_port(ctx, sal_addr, is_tunneled);
+	result = sal_add_listen_port(ctx, sal_addr, !!is_tunneled);
 	sal_address_destroy(sal_addr);
 	return result;
 }
@@ -720,7 +720,7 @@ void sal_set_keepalive_period(Sal *ctx,unsigned int value){
 	for (iterator=belle_sip_provider_get_listening_points(ctx->prov);iterator!=NULL;iterator=iterator->next) {
 		lp=(belle_sip_listening_point_t*)iterator->data;
 		if (ctx->use_tcp_tls_keep_alive || strcasecmp(belle_sip_listening_point_get_transport(lp),"udp")==0) {
-			belle_sip_listening_point_set_keep_alive(lp,ctx->keep_alive);
+			belle_sip_listening_point_set_keep_alive(lp,(int)ctx->keep_alive);
 		}
 	}
 }
@@ -996,7 +996,7 @@ const char *sal_custom_header_find(const SalCustomHeader *ch, const char *name){
 SalCustomHeader *sal_custom_header_remove(SalCustomHeader *ch, const char *name) {
 	belle_sip_message_t *msg=(belle_sip_message_t*)ch;
 	if (msg==NULL) return NULL;
-	
+
 	belle_sip_message_remove_header(msg, name);
 	return (SalCustomHeader*)msg;
 }
@@ -1079,9 +1079,9 @@ int sal_generate_uuid(char *uuid, size_t len) {
 	if (len==0) return -1;
 	/*create an UUID as described in RFC4122, 4.4 */
 	belle_sip_random_bytes((unsigned char*)&uuid_struct, sizeof(sal_uuid_t));
-	uuid_struct.clock_seq_hi_and_reserved&=~(1<<6);
+	uuid_struct.clock_seq_hi_and_reserved&=(unsigned char)~(1<<6);
 	uuid_struct.clock_seq_hi_and_reserved|=1<<7;
-	uuid_struct.time_hi_and_version&=~(0xf<<12);
+	uuid_struct.time_hi_and_version&=(short unsigned int)~(0xf<<12);
 	uuid_struct.time_hi_and_version|=4<<12;
 
 	written=snprintf(uuid,len,"%8.8x-%4.4x-%4.4x-%2.2x%2.2x-", uuid_struct.time_low, uuid_struct.time_mid,
@@ -1092,7 +1092,7 @@ int sal_generate_uuid(char *uuid, size_t len) {
 		return -1;
 	}
 	for (i = 0; i < 6; i++)
-		written+=snprintf(uuid+written,len-written,"%2.2x", uuid_struct.node[i]);
+		written+=snprintf(uuid+written,len-(size_t)written,"%2.2x", uuid_struct.node[i]);
 	uuid[len-1]='\0';
 	return 0;
 }
@@ -1119,7 +1119,7 @@ static void make_supported_header(Sal *sal){
 		const char *tag=(const char*)it->data;
 		size_t taglen=strlen(tag);
 		if (alltags==NULL || (written+taglen+1>=buflen)) alltags=reinterpret_cast<char *>(ms_realloc(alltags,(buflen=buflen*2)));
-		written+=snprintf(alltags+written,buflen-written,it->next ? "%s, " : "%s",tag);
+		written+=(size_t)snprintf(alltags+written,buflen-written,it->next ? "%s, " : "%s",tag);
 	}
 	if (alltags){
 		sal->supported=belle_sip_header_create("Supported",alltags);
@@ -1301,7 +1301,7 @@ unsigned char * sal_get_random_bytes(unsigned char *ret, size_t size){
 }
 
 char *sal_get_random_token(int size){
-	return belle_sip_random_token(reinterpret_cast<char *>(ms_malloc(size)),size);
+	return belle_sip_random_token(reinterpret_cast<char *>(ms_malloc((size_t)size)),(size_t)size);
 }
 
 unsigned int sal_get_random(void){

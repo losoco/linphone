@@ -16,21 +16,77 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "conference-p.h"
-
 #include "remote-conference.h"
+#include "participant-p.h"
+#include "xml/resource-lists.h"
+
+using namespace std;
+using namespace LinphonePrivate::Xsd::ResourceLists;
 
 LINPHONE_BEGIN_NAMESPACE
 
 // =============================================================================
 
-class RemoteConferencePrivate : public ConferencePrivate {
-public:
-};
-
-// =============================================================================
-
 RemoteConference::RemoteConference (LinphoneCore *core, const Address &myAddress, CallListener *listener)
-	: Conference(*new RemoteConferencePrivate, core, myAddress, listener) {}
+	: Conference(core, myAddress, listener) {
+	eventHandler = new RemoteConferenceEventHandler(core, this);
+}
+
+RemoteConference::~RemoteConference () {
+	delete eventHandler;
+}
+
+// -----------------------------------------------------------------------------
+
+shared_ptr<Participant> RemoteConference::addParticipant (const Address &addr, const CallSessionParams *params, bool hasMedia) {
+	shared_ptr<Participant> participant = findParticipant(addr);
+	if (participant)
+		return participant;
+	participant = make_shared<Participant>(addr);
+	participant->getPrivate()->createSession(*this, params, hasMedia, this);
+	participants.push_back(participant);
+	if (!activeParticipant)
+		activeParticipant = participant;
+	return participant;
+}
+
+void RemoteConference::removeParticipant (const shared_ptr<const Participant> &participant) {
+	for (const auto &p : participants) {
+		if (participant->getAddress().equal(p->getAddress())) {
+			participants.remove(p);
+			return;
+		}
+	}
+}
+
+
+string RemoteConference::getResourceLists (const list<Address> &addresses) {
+	ResourceLists rl = ResourceLists();
+	ListType l = ListType();
+	for (const auto &addr : addresses) {
+		EntryType entry = EntryType(addr.asStringUriOnly());
+		if (!addr.getDisplayName().empty())
+			entry.setDisplayName(DisplayName(addr.getDisplayName()));
+		l.getEntry().push_back(entry);
+	}
+	rl.getList().push_back(l);
+
+	Xsd::XmlSchema::NamespaceInfomap map;
+	stringstream xmlBody;
+	serializeResourceLists(xmlBody, rl, map);
+	return xmlBody.str();
+}
+
+// -----------------------------------------------------------------------------
+
+void RemoteConference::onConferenceCreated (const Address &addr) {}
+
+void RemoteConference::onConferenceTerminated (const Address &addr) {}
+
+void RemoteConference::onParticipantAdded (const Address &addr) {}
+
+void RemoteConference::onParticipantRemoved (const Address &addr) {}
+
+void RemoteConference::onParticipantSetAdmin (const Address &addr, bool isAdmin) {}
 
 LINPHONE_END_NAMESPACE

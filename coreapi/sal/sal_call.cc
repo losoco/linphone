@@ -399,7 +399,7 @@ void SalCall::process_response_cb(void *op_base, const belle_sip_response_event_
 							&& (header_content_type = belle_sip_message_get_header_by_type(req,belle_sip_header_content_type_t))
 							&& strcmp("application",belle_sip_header_content_type_get_type(header_content_type))==0
 							&& strcmp("media_control+xml",belle_sip_header_content_type_get_subtype(header_content_type))==0) {
-							unsigned int retry_in = (unsigned int)(1000*((float)rand()/RAND_MAX));
+							unsigned int retry_in = rand() % 1001; // [0;1000]
 							belle_sip_source_t *s=op->root->create_timer(vfu_retry_cb,op->ref(), retry_in, "vfu request retry");
 							ms_message("Rejected vfu request on op [%p], just retry in [%ui] ms",op,retry_in);
 							belle_sip_object_unref(s);
@@ -808,7 +808,7 @@ void SalCall::fill_cbs() {
 	this->type=Type::Call;
 }
 
-int SalCall::call(const char *from, const char *to) {
+int SalCall::call(const char *from, const char *to, const char *subject) {
 	belle_sip_request_t* invite;
 	this->dir=Dir::Outgoing;
 
@@ -824,6 +824,7 @@ int SalCall::call(const char *from, const char *to) {
 	}
 
 	fill_invite(invite);
+	if (subject) belle_sip_message_add_header(BELLE_SIP_MESSAGE(invite), belle_sip_header_create("Subject", subject));
 
 	fill_cbs();
 	if (this->replaces){
@@ -1000,7 +1001,7 @@ int SalCall::update(const char *subject, bool_t no_user_consent) {
 			during a very early state of outgoing call initiation (the dialog has not been created yet). */
 		const char *from = get_from();
 		const char *to = get_to();
-		return call(from, to);
+		return call(from, to, subject);
 	}
 
 	state = belle_sip_dialog_get_state(this->dialog);

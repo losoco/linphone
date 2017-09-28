@@ -31,7 +31,7 @@ Copyright (C) 2000  Simon MORLAT (simon.morlat@linphone.org)
 
 // For migration purpose.
 #include "address/address-p.h"
-#include "c-wrapper/c-tools.h"
+#include "c-wrapper/c-wrapper.h"
 
 /*store current config related to server location*/
 static void linphone_proxy_config_store_server_config(LinphoneProxyConfig* cfg) {
@@ -116,24 +116,24 @@ static void linphone_proxy_config_init(LinphoneCore* lc, LinphoneProxyConfig *cf
 	const char *nat_policy_ref = lc ? lp_config_get_default_string(lc->config, "proxy", "nat_policy_ref", NULL):NULL;
 	cfg->lc = lc;
 	cfg->expires = lc ? lp_config_get_default_int(lc->config, "proxy", "reg_expires", 3600) : 3600;
-	cfg->reg_sendregister = lc ? lp_config_get_default_int(lc->config, "proxy", "reg_sendregister", 1) : 1;
+	cfg->reg_sendregister = lc ? !!lp_config_get_default_int(lc->config, "proxy", "reg_sendregister", 1) : 1;
 	cfg->dial_prefix = dial_prefix ? ms_strdup(dial_prefix) : NULL;
-	cfg->dial_escape_plus = lc ? lp_config_get_default_int(lc->config, "proxy", "dial_escape_plus", 0) : 0;
-	cfg->privacy = lc ? lp_config_get_default_int(lc->config, "proxy", "privacy", LinphonePrivacyDefault) : LinphonePrivacyDefault;
+	cfg->dial_escape_plus = lc ? !!lp_config_get_default_int(lc->config, "proxy", "dial_escape_plus", 0) : 0;
+	cfg->privacy = lc ? (LinphonePrivacyMask)lp_config_get_default_int(lc->config, "proxy", "privacy", LinphonePrivacyDefault) : (LinphonePrivacyMask)LinphonePrivacyDefault;
 	cfg->identity_address = identity ? linphone_address_new(identity) : NULL;
 	cfg->reg_identity = cfg->identity_address ? linphone_address_as_string(cfg->identity_address) : NULL;
 	cfg->reg_proxy = proxy ? ms_strdup(proxy) : NULL;
 	cfg->reg_route = route ? ms_strdup(route) : NULL;
 	cfg->realm = realm ? ms_strdup(realm) : NULL;
-	cfg->quality_reporting_enabled = lc ? lp_config_get_default_int(lc->config, "proxy", "quality_reporting_enabled", 0) : 0;
+	cfg->quality_reporting_enabled = lc ? !!lp_config_get_default_int(lc->config, "proxy", "quality_reporting_enabled", 0) : 0;
 	cfg->quality_reporting_collector = quality_reporting_collector ? ms_strdup(quality_reporting_collector) : NULL;
-	cfg->quality_reporting_interval = lc ? lp_config_get_default_int(lc->config, "proxy", "quality_reporting_interval", 0) : 0;
+	cfg->quality_reporting_interval = lc ? !!lp_config_get_default_int(lc->config, "proxy", "quality_reporting_interval", 0) : 0;
 	cfg->contact_params = contact_params ? ms_strdup(contact_params) : NULL;
 	cfg->contact_uri_params = contact_uri_params ? ms_strdup(contact_uri_params) : NULL;
 	cfg->avpf_mode = lc ? static_cast<LinphoneAVPFMode>(lp_config_get_default_int(lc->config, "proxy", "avpf", LinphoneAVPFDefault)) : LinphoneAVPFDefault;
-	cfg->avpf_rr_interval = lc ? lp_config_get_default_int(lc->config, "proxy", "avpf_rr_interval", 5) : 5;
+	cfg->avpf_rr_interval = lc ? !!lp_config_get_default_int(lc->config, "proxy", "avpf_rr_interval", 5) : 5;
 	cfg->publish_expires= lc ? lp_config_get_default_int(lc->config, "proxy", "publish_expires", -1) : -1;
-	cfg->publish = lc ? lp_config_get_default_int(lc->config, "proxy", "publish", FALSE) : FALSE;
+	cfg->publish = lc ? !!lp_config_get_default_int(lc->config, "proxy", "publish", FALSE) : FALSE;
 	cfg->refkey = refkey ? ms_strdup(refkey) : NULL;
 	if (nat_policy_ref) {
 		LinphoneNatPolicy *policy = linphone_config_create_nat_policy_from_section(lc->config,nat_policy_ref);
@@ -362,18 +362,10 @@ LinphoneStatus linphone_proxy_config_set_route(LinphoneProxyConfig *cfg, const c
 }
 
 bool_t linphone_proxy_config_check(LinphoneCore *lc, LinphoneProxyConfig *cfg){
-	if (cfg->reg_proxy==NULL){
-		if (lc)
-			linphone_core_notify_display_warning(lc,_("The sip proxy address you entered is invalid, it must start with \"sip:\""
-						" followed by a hostname."));
+	if (cfg->reg_proxy==NULL)
 		return FALSE;
-	}
-	if (cfg->identity_address==NULL){
-		if (lc)
-			linphone_core_notify_display_warning(lc,_("The sip identity you entered is invalid.\nIt should look like "
-					"sip:username@proxydomain, such as sip:alice@example.net"));
+	if (cfg->identity_address==NULL)
 		return FALSE;
-	}
 	return TRUE;
 }
 
@@ -446,35 +438,30 @@ void linphone_proxy_config_stop_refreshing(LinphoneProxyConfig * cfg){
 	}
 }
 
-LinphoneAddress *guess_contact_for_register(LinphoneProxyConfig *cfg){
-	LinphoneAddress *ret=NULL;
-	LinphoneAddress *proxy=linphone_address_new(cfg->reg_proxy);
-	const char *host;
-
-	if (proxy==NULL) return NULL;
-	host=linphone_address_get_domain(proxy);
-	if (host!=NULL){
-		int localport = -1;
-		const char *localip = NULL;
-		LinphoneAddress *contact=linphone_address_clone(cfg->identity_address);
-
-		linphone_address_clean(contact);
-
+static void guess_contact_for_register (LinphoneProxyConfig *cfg) {
+	linphone_address_unref(cfg->contact_address);
+	cfg->contact_address = nullptr;
+	linphone_address_unref(cfg->contact_address_without_params);
+	cfg->contact_address_without_params = nullptr;
+	LinphoneAddress *proxy = linphone_address_new(cfg->reg_proxy);
+	if (!proxy)
+		return;
+	const char *host = linphone_address_get_domain(proxy);
+	if (host) {
+		cfg->contact_address_without_params = linphone_address_clone(cfg->identity_address);
+		linphone_address_clean(cfg->contact_address_without_params);
+		linphone_address_set_port(cfg->contact_address_without_params, -1);
+		linphone_address_set_domain(cfg->contact_address_without_params, nullptr);
+		linphone_address_set_display_name(cfg->contact_address_without_params, nullptr);
+		cfg->contact_address = linphone_address_clone(cfg->contact_address_without_params);
 		if (cfg->contact_params) {
 			// We want to add a list of contacts params to the linphone address
-			linphone_address_set_params(contact,cfg->contact_params);
+			linphone_address_set_params(cfg->contact_address, cfg->contact_params);
 		}
-		if (cfg->contact_uri_params){
-			linphone_address_set_uri_params(contact,cfg->contact_uri_params);
-		}
-		linphone_address_set_port(contact,localport);
-		linphone_address_set_domain(contact,localip);
-		linphone_address_set_display_name(contact,NULL);
-
-		ret=contact;
+		if (cfg->contact_uri_params)
+			linphone_address_set_uri_params(cfg->contact_address, cfg->contact_uri_params);
 	}
 	linphone_address_unref(proxy);
-	return ret;
 }
 
 void _linphone_proxy_config_unregister(LinphoneProxyConfig *obj) {
@@ -489,7 +476,6 @@ static void linphone_proxy_config_register(LinphoneProxyConfig *cfg){
 		LinphoneAddress* proxy=linphone_address_new(cfg->reg_proxy);
 		char* proxy_string;
 		char * from = linphone_address_as_string(cfg->identity_address);
-		LinphoneAddress *contact;
 		ms_message("LinphoneProxyConfig [%p] about to register (LinphoneCore version: %s)",cfg,linphone_core_get_version());
 		proxy_string=linphone_address_as_string_uri_only(proxy);
 		linphone_address_unref(proxy);
@@ -499,18 +485,16 @@ static void linphone_proxy_config_register(LinphoneProxyConfig *cfg){
 
 		linphone_configure_op(cfg->lc, cfg->op, cfg->identity_address, cfg->sent_headers, FALSE);
 
-		if ((contact=guess_contact_for_register(cfg))) {
-			cfg->op->set_contact_address(L_GET_PRIVATE_FROM_C_STRUCT(contact, Address)->getInternalAddress());
-			linphone_address_unref(contact);
-		}
-
+		guess_contact_for_register(cfg);
+		if (cfg->contact_address)
+			cfg->op->set_contact_address(L_GET_PRIVATE_FROM_C_OBJECT(cfg->contact_address)->getInternalAddress());
 		cfg->op->set_user_pointer(cfg);
 
 		if (cfg->op->register_(
 			proxy_string,
 			cfg->reg_identity,
 			cfg->expires,
-			cfg->pending_contact ? L_GET_PRIVATE_FROM_C_STRUCT(cfg->pending_contact, Address)->getInternalAddress() : NULL
+			cfg->pending_contact ? L_GET_PRIVATE_FROM_C_OBJECT(cfg->pending_contact)->getInternalAddress() : NULL
 		)==0) {
 			if (cfg->pending_contact) {
 				linphone_address_unref(cfg->pending_contact);
@@ -569,7 +553,7 @@ bool_t linphone_proxy_config_quality_reporting_enabled(LinphoneProxyConfig *cfg)
 }
 
 void linphone_proxy_config_set_quality_reporting_interval(LinphoneProxyConfig *cfg, int interval) {
-	cfg->quality_reporting_interval = interval;
+	cfg->quality_reporting_interval = !!interval;
 }
 
 int linphone_proxy_config_get_quality_reporting_interval(LinphoneProxyConfig *cfg) {
@@ -740,13 +724,7 @@ LinphoneAddress* linphone_proxy_config_normalize_sip_uri(LinphoneProxyConfig *pr
 	if (!username || *username=='\0') return NULL;
 
 	if (is_enum(username,&enum_domain)){
-		if (proxy) {
-			linphone_core_notify_display_status(proxy->lc,_("Looking for telephone number destination..."));
-		}
 		if (enum_lookup(enum_domain,&enumres)<0){
-			if (proxy) {
-				linphone_core_notify_display_status(proxy->lc,_("Could not resolve this number."));
-			}
 			ms_free(enum_domain);
 			return NULL;
 		}
@@ -1145,7 +1123,7 @@ void linphone_proxy_config_write_to_config_file(LpConfig *config, LinphoneProxyC
 	lp_config_set_int(config, key, "avpf_rr_interval", cfg->avpf_rr_interval);
 	lp_config_set_int(config,key,"dial_escape_plus",cfg->dial_escape_plus);
 	lp_config_set_string(config,key,"dial_prefix",cfg->dial_prefix);
-	lp_config_set_int(config,key,"privacy",cfg->privacy);
+	lp_config_set_int(config,key,"privacy",(int)cfg->privacy);
 	if (cfg->refkey) lp_config_set_string(config,key,"refkey",cfg->refkey);
 	lp_config_set_int(config, key, "publish_expires", cfg->publish_expires);
 
@@ -1164,10 +1142,10 @@ void linphone_proxy_config_write_to_config_file(LpConfig *config, LinphoneProxyC
 	}
 
 #define CONFIGURE_BOOL_VALUE(cfg,config,key,param,param_name) \
-	linphone_proxy_config_enable_##param(cfg,lp_config_get_int(config,key,param_name,linphone_proxy_config_##param##_enabled(cfg)));
+	linphone_proxy_config_enable_##param(cfg, !!lp_config_get_int(config,key,param_name,linphone_proxy_config_##param##_enabled(cfg)));
 
-#define CONFIGURE_INT_VALUE(cfg,config,key,param,param_name) \
-		linphone_proxy_config_set_##param(cfg,lp_config_get_int(config,key,param_name,linphone_proxy_config_get_##param(cfg)));
+#define CONFIGURE_INT_VALUE(cfg,config,key,param,param_name, param_type) \
+		linphone_proxy_config_set_##param(cfg, (param_type)lp_config_get_int(config,key,param_name,(int)linphone_proxy_config_get_##param(cfg)));
 
 LinphoneProxyConfig *linphone_proxy_config_new_from_config_file(LinphoneCore* lc, int index)
 {
@@ -1193,26 +1171,26 @@ LinphoneProxyConfig *linphone_proxy_config_new_from_config_file(LinphoneCore* lc
 
 	CONFIGURE_BOOL_VALUE(cfg,config,key,quality_reporting,"quality_reporting_enabled")
 	CONFIGURE_STRING_VALUE(cfg,config,key,quality_reporting_collector,"quality_reporting_collector")
-	CONFIGURE_INT_VALUE(cfg,config,key,quality_reporting_interval,"quality_reporting_interval")
+	CONFIGURE_INT_VALUE(cfg,config,key,quality_reporting_interval,"quality_reporting_interval",int)
 
 	CONFIGURE_STRING_VALUE(cfg,config,key,contact_parameters,"contact_parameters")
 	CONFIGURE_STRING_VALUE(cfg,config,key,contact_uri_parameters,"contact_uri_parameters")
 
-	CONFIGURE_INT_VALUE(cfg,config,key,expires,"reg_expires")
+	CONFIGURE_INT_VALUE(cfg,config,key,expires,"reg_expires", int)
 	CONFIGURE_BOOL_VALUE(cfg,config,key,register,"reg_sendregister")
 	CONFIGURE_BOOL_VALUE(cfg,config,key,publish,"publish")
 	linphone_proxy_config_set_avpf_mode(cfg,static_cast<LinphoneAVPFMode>(lp_config_get_int(config,key,"avpf",linphone_proxy_config_get_avpf_mode(cfg))));
-	CONFIGURE_INT_VALUE(cfg,config,key,avpf_rr_interval,"avpf_rr_interval")
-	CONFIGURE_INT_VALUE(cfg,config,key,dial_escape_plus,"dial_escape_plus")
+	CONFIGURE_INT_VALUE(cfg,config,key,avpf_rr_interval,"avpf_rr_interval",uint8_t)
+	CONFIGURE_INT_VALUE(cfg,config,key,dial_escape_plus,"dial_escape_plus",bool_t)
 	CONFIGURE_STRING_VALUE(cfg,config,key,dial_prefix,"dial_prefix")
 
 	tmp=lp_config_get_string(config,key,"type",NULL);
 	if (tmp!=NULL && strlen(tmp)>0)
 		linphone_proxy_config_set_sip_setup(cfg,tmp);
-	CONFIGURE_INT_VALUE(cfg,config,key,privacy,"privacy")
+	CONFIGURE_INT_VALUE(cfg,config,key,privacy,"privacy",LinphonePrivacyMask)
 
 	CONFIGURE_STRING_VALUE(cfg,config,key,ref_key,"refkey")
-	CONFIGURE_INT_VALUE(cfg,config,key,publish_expires,"publish_expires")
+	CONFIGURE_INT_VALUE(cfg,config,key,publish_expires,"publish_expires",int)
 
 	nat_policy_ref = lp_config_get_string(config, key, "nat_policy_ref", NULL);
 	if (nat_policy_ref != NULL) {
@@ -1225,7 +1203,6 @@ LinphoneProxyConfig *linphone_proxy_config_new_from_config_file(LinphoneCore* lc
 static void linphone_proxy_config_activate_sip_setup(LinphoneProxyConfig *cfg){
 	SipSetupContext *ssc;
 	SipSetup *ss=sip_setup_lookup(cfg->type);
-	LinphoneCore *lc=linphone_proxy_config_get_core(cfg);
 	unsigned int caps;
 	if (!ss) return ;
 	ssc=sip_setup_context_new(ss,cfg);
@@ -1234,16 +1211,10 @@ static void linphone_proxy_config_activate_sip_setup(LinphoneProxyConfig *cfg){
 		ms_error("Invalid identity for this proxy configuration.");
 		return;
 	}
-	caps=sip_setup_context_get_capabilities(ssc);
+	caps=(unsigned int)sip_setup_context_get_capabilities(ssc);
 	if (caps & SIP_SETUP_CAP_ACCOUNT_MANAGER){
-		if (sip_setup_context_login_account(ssc,cfg->reg_identity,NULL,NULL)!=0){
-			{
-				char *tmp=ms_strdup_printf(_("Could not login as %s"),cfg->reg_identity);
-				linphone_core_notify_display_warning(lc,tmp);
-				ms_free(tmp);
-			}
+		if (sip_setup_context_login_account(ssc,cfg->reg_identity,NULL,NULL)!=0)
 			return;
-		}
 	}
 	if (caps & SIP_SETUP_CAP_PROXY_PROVIDER){
 		char proxy[256];
@@ -1313,14 +1284,6 @@ void * linphone_proxy_config_get_user_data(const LinphoneProxyConfig *cfg) {
 
 void linphone_proxy_config_set_state(LinphoneProxyConfig *cfg, LinphoneRegistrationState state, const char *message){
 	LinphoneCore *lc=cfg->lc;
-
-	if (state==LinphoneRegistrationProgress) {
-		char *msg=ortp_strdup_printf(_("Refreshing on %s..."), linphone_proxy_config_get_identity(cfg));
-		linphone_core_notify_display_status(lc,msg);
-		ms_free(msg);
-
-	}
-
 	if (cfg->state!=state || state==LinphoneRegistrationOk) { /*allow multiple notification of LinphoneRegistrationOk for refreshing*/
 		ms_message("Proxy config [%p] for identity [%s] moving from state [%s] to [%s] on core [%p]"	,
 					cfg,
@@ -1392,7 +1355,7 @@ const char* linphone_proxy_config_get_transport(const LinphoneProxyConfig *cfg) 
 	bool_t destroy_route_addr = FALSE;
 
 	if (linphone_proxy_config_get_service_route(cfg)) {
-		route_addr = L_GET_PRIVATE_FROM_C_STRUCT(linphone_proxy_config_get_service_route(cfg), Address)->getInternalAddress();
+		route_addr = L_GET_PRIVATE_FROM_C_OBJECT(linphone_proxy_config_get_service_route(cfg))->getInternalAddress();
 	} else if (linphone_proxy_config_get_route(cfg)) {
 		addr=linphone_proxy_config_get_route(cfg);
 	} else if(linphone_proxy_config_get_addr(cfg)) {
@@ -1459,16 +1422,12 @@ uint8_t linphone_proxy_config_get_avpf_rr_interval(const LinphoneProxyConfig *cf
 	return cfg->avpf_rr_interval;
 }
 
-const LinphoneAddress* linphone_proxy_config_get_contact(const LinphoneProxyConfig *cfg) {
-	// Workaround for wrapping.
-	if (cfg->contact_address)
-		linphone_address_unref(cfg->contact_address);
-
-	char *buf = sal_address_as_string(cfg->op->get_contact_address());
-	const_cast<LinphoneProxyConfig *>(cfg)->contact_address = linphone_address_new(buf);
-	ms_free(buf);
-
+const LinphoneAddress *linphone_proxy_config_get_contact (const LinphoneProxyConfig *cfg) {
 	return cfg->contact_address;
+}
+
+const LinphoneAddress *_linphone_proxy_config_get_contact_without_params (const LinphoneProxyConfig *cfg) {
+	return cfg->contact_address_without_params;
 }
 
 const struct _LinphoneAuthInfo* linphone_proxy_config_find_auth_info(const LinphoneProxyConfig *cfg) {

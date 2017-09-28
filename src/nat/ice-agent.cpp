@@ -16,18 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ice-agent.h"
-#include "conference/session/media-session-p.h"
+#include "linphone/core.h"
 
+#include "private.h"
+
+#include "conference/session/media-session-p.h"
 #include "logger/logger.h"
 
-#include "linphone/core.h"
+#include "ice-agent.h"
+
+// =============================================================================
 
 using namespace std;
 
 LINPHONE_BEGIN_NAMESPACE
-
-// =============================================================================
 
 bool IceAgent::candidatesGathered () const {
 	if (!iceSession)
@@ -36,14 +38,21 @@ bool IceAgent::candidatesGathered () const {
 }
 
 void IceAgent::checkSession (IceRole role, bool isReinvite) {
+	// Already created.
 	if (iceSession)
-		return; /* Already created */
+		return;
+
 	LinphoneConfig *config = linphone_core_get_config(mediaSession.getPrivate()->getCore());
 	if (isReinvite && (lp_config_get_int(config, "net", "allow_late_ice", 0) == 0))
 		return;
+
 	iceSession = ice_session_new();
-	/* For backward compatibility purposes, shall be enabled by default in the future */
-	ice_session_enable_message_integrity_check(iceSession, lp_config_get_int(config, "net", "ice_session_enable_message_integrity_check", 1));
+
+	// For backward compatibility purposes, shall be enabled by default in the future.
+	ice_session_enable_message_integrity_check(
+		iceSession,
+		!!lp_config_get_int(config, "net", "ice_session_enable_message_integrity_check", 1)
+	);
 	if (lp_config_get_int(config, "net", "dont_default_to_stun_candidates", 0)) {
 		IceCandidateType types[ICT_CandidateTypeMax];
 		types[0] = ICT_HostCandidate;
@@ -57,6 +66,7 @@ void IceAgent::checkSession (IceRole role, bool isReinvite) {
 void IceAgent::deleteSession () {
 	if (!iceSession)
 		return;
+
 	ice_session_destroy(iceSession);
 	iceSession = nullptr;
 	mediaSession.getPrivate()->deactivateIce();
@@ -68,11 +78,13 @@ void IceAgent::gatheringFinished () {
 		clearUnusedIceCandidates(mediaSession.getPrivate()->getLocalDesc(), rmd);
 	if (!iceSession)
 		return;
+
 	ice_session_compute_candidates_foundations(iceSession);
 	ice_session_eliminate_redundant_candidates(iceSession);
 	ice_session_choose_default_candidates(iceSession);
+
 	int pingTime = ice_session_average_gathering_round_trip_time(iceSession);
-	if (pingTime >=0) {
+	if (pingTime >= 0) {
 		mediaSession.getPrivate()->setPingTime(pingTime);
 	}
 }
@@ -86,7 +98,7 @@ int IceAgent::getNbLosingPairs () const {
 bool IceAgent::hasCompleted () const {
 	if (!iceSession)
 		return false;
-	return (ice_session_state(iceSession) == IS_Completed);
+	return ice_session_state(iceSession) == IS_Completed;
 }
 
 bool IceAgent::hasCompletedCheckList () const {
@@ -104,7 +116,7 @@ bool IceAgent::hasCompletedCheckList () const {
 bool IceAgent::isControlling () const {
 	if (!iceSession)
 		return false;
-	return (ice_session_role(iceSession) == IR_Controlling);
+	return ice_session_role(iceSession) == IR_Controlling;
 }
 
 bool IceAgent::prepare (const SalMediaDescription *localDesc, bool incomingOffer) {
@@ -115,7 +127,8 @@ bool IceAgent::prepare (const SalMediaDescription *localDesc, bool incomingOffer
 	bool hasVideo = false;
 	if (incomingOffer) {
 		remoteDesc = mediaSession.getPrivate()->getOp()->get_remote_media_description();
-		hasVideo = linphone_core_video_enabled(mediaSession.getPrivate()->getCore()) && linphone_core_media_description_contains_video_stream(remoteDesc);
+		hasVideo = linphone_core_video_enabled(mediaSession.getPrivate()->getCore()) &&
+			linphone_core_media_description_contains_video_stream(remoteDesc);
 	} else
 		hasVideo = mediaSession.getMediaParams()->videoEnabled();
 
@@ -124,14 +137,16 @@ bool IceAgent::prepare (const SalMediaDescription *localDesc, bool incomingOffer
 		prepareIceForStream(mediaSession.getPrivate()->getMediaStream(LinphoneStreamTypeVideo), true);
 	if (mediaSession.getMediaParams()->realtimeTextEnabled())
 		prepareIceForStream(mediaSession.getPrivate()->getMediaStream(LinphoneStreamTypeText), true);
-	/* Start ICE gathering */
+
+	// Start ICE gathering.
 	if (incomingOffer)
-		updateFromRemoteMediaDescription(localDesc, remoteDesc, true); /* This may delete the ice session */
+		// This may delete the ice session.
+		updateFromRemoteMediaDescription(localDesc, remoteDesc, true);
 	if (iceSession && !ice_session_candidates_gathered(iceSession)) {
 		mediaSession.getPrivate()->prepareStreamsForIceGathering(hasVideo);
 		int err = gatherIceCandidates();
 		if (err == 0) {
-			/* Ice candidates gathering wasn't started, but we can proceed with the call anyway. */
+			// Ice candidates gathering wasn't started, but we can proceed with the call anyway.
 			mediaSession.getPrivate()->stopStreamsForIceGathering();
 			return false;
 		} else if (err == -1) {
@@ -147,12 +162,13 @@ bool IceAgent::prepare (const SalMediaDescription *localDesc, bool incomingOffer
 void IceAgent::prepareIceForStream (MediaStream *ms, bool createChecklist) {
 	if (!iceSession)
 		return;
+
 	int streamIndex = mediaSession.getPrivate()->getStreamIndex(ms);
 	rtp_session_set_pktinfo(ms->sessions.rtp_session, true);
 	IceCheckList *cl = ice_session_check_list(iceSession, streamIndex);
 	if (!cl && createChecklist) {
 		cl = ice_check_list_new();
-		ice_session_add_check_list(iceSession, cl, streamIndex);
+		ice_session_add_check_list(iceSession, cl, static_cast<unsigned int>(streamIndex));
 		lInfo() << "Created new ICE check list for stream [" << streamIndex << "]";
 	}
 	if (cl)
@@ -186,27 +202,32 @@ void IceAgent::stopIceForInactiveStreams (SalMediaDescription *desc) {
 	updateIceStateInCallStats();
 }
 
-void IceAgent::updateFromRemoteMediaDescription (const SalMediaDescription *localDesc, const SalMediaDescription *remoteDesc, bool isOffer) {
+void IceAgent::updateFromRemoteMediaDescription (
+	const SalMediaDescription *localDesc,
+	const SalMediaDescription *remoteDesc,
+	bool isOffer
+) {
 	if (!iceSession)
 		return;
+
 	if (!iceParamsFoundInRemoteMediaDescription(remoteDesc)) {
-		/* Response from remote does not contain mandatory ICE attributes, delete the session */
+		// Response from remote does not contain mandatory ICE attributes, delete the session.
 		deleteSession();
 		mediaSession.getPrivate()->enableSymmetricRtp(linphone_core_symmetric_rtp_enabled(mediaSession.getPrivate()->getCore()));
 		return;
 	}
 
-	/* Check for ICE restart and set remote credentials */
+	// Check for ICE restart and set remote credentials.
 	bool iceRestarted = checkForIceRestartAndSetRemoteCredentials(remoteDesc, isOffer);
 
-	/* Create ICE check lists if needed and parse ICE attributes */
+	// Create ICE check lists if needed and parse ICE attributes.
 	createIceCheckListsAndParseIceAttributes(remoteDesc, iceRestarted);
 	for (int i = 0; i < remoteDesc->nb_streams; i++) {
 		const SalStreamDescription *stream = &remoteDesc->streams[i];
 		IceCheckList *cl = ice_session_check_list(iceSession, i);
 		if (!cl) continue;
 		if (!sal_stream_description_active(stream)) {
-			ice_session_remove_check_list_from_idx(iceSession, i);
+			ice_session_remove_check_list_from_idx(iceSession, static_cast<unsigned int>(i));
 			mediaSession.getPrivate()->clearIceCheckList(cl);
 		}
 	}
@@ -233,35 +254,35 @@ void IceAgent::updateIceStateInCallStats () {
 	LinphoneCallStats *textStats = mediaSession.getPrivate()->getStats(LinphoneStreamTypeText);
 	IceSessionState sessionState = ice_session_state(iceSession);
 	if ((sessionState == IS_Completed) || ((sessionState == IS_Failed) && ice_session_has_completed_check_list(iceSession))) {
-		audioStats->ice_state = LinphoneIceStateNotActivated;
+		_linphone_call_stats_set_ice_state(audioStats, LinphoneIceStateNotActivated);
 		if (audioCheckList && mediaSession.getMediaParams()->audioEnabled())
 			updateIceStateInCallStatsForStream(audioStats, audioCheckList);
 
-		videoStats->ice_state = LinphoneIceStateNotActivated;
+		_linphone_call_stats_set_ice_state(videoStats, LinphoneIceStateNotActivated);
 		if (videoCheckList && mediaSession.getMediaParams()->videoEnabled())
 			updateIceStateInCallStatsForStream(videoStats, videoCheckList);
 
-		textStats->ice_state = LinphoneIceStateNotActivated;
+		_linphone_call_stats_set_ice_state(textStats, LinphoneIceStateNotActivated);
 		if (textCheckList && mediaSession.getMediaParams()->realtimeTextEnabled())
 			updateIceStateInCallStatsForStream(textStats, textCheckList);
 	} else if (sessionState == IS_Running) {
 		if (audioCheckList && mediaSession.getMediaParams()->audioEnabled())
-			audioStats->ice_state = LinphoneIceStateInProgress;
+			_linphone_call_stats_set_ice_state(audioStats, LinphoneIceStateInProgress);
 		if (videoCheckList && mediaSession.getMediaParams()->videoEnabled())
-			videoStats->ice_state = LinphoneIceStateInProgress;
+			_linphone_call_stats_set_ice_state(videoStats, LinphoneIceStateInProgress);
 		if (textCheckList && mediaSession.getMediaParams()->realtimeTextEnabled())
-			textStats->ice_state = LinphoneIceStateInProgress;
+			_linphone_call_stats_set_ice_state(textStats, LinphoneIceStateInProgress);
 	} else {
 		if (audioCheckList && mediaSession.getMediaParams()->audioEnabled())
-			audioStats->ice_state = LinphoneIceStateFailed;
+			_linphone_call_stats_set_ice_state(audioStats, LinphoneIceStateFailed);
 		if (videoCheckList && mediaSession.getMediaParams()->videoEnabled())
-			videoStats->ice_state = LinphoneIceStateFailed;
+			_linphone_call_stats_set_ice_state(videoStats, LinphoneIceStateFailed);
 		if (textCheckList && mediaSession.getMediaParams()->realtimeTextEnabled())
-			textStats->ice_state = LinphoneIceStateFailed;
+			_linphone_call_stats_set_ice_state(textStats, LinphoneIceStateFailed);
 	}
-	lInfo() << "CallSession [" << &mediaSession << "] New ICE state: audio: [" << linphone_ice_state_to_string(audioStats->ice_state)
-		<< "]    video: [" << linphone_ice_state_to_string(videoStats->ice_state)
-		<< "]    text: [" << linphone_ice_state_to_string(textStats->ice_state) << "]";
+	lInfo() << "CallSession [" << &mediaSession << "] New ICE state: audio: [" << linphone_ice_state_to_string(linphone_call_stats_get_ice_state(audioStats)) <<
+		"]    video: [" << linphone_ice_state_to_string(linphone_call_stats_get_ice_state(videoStats)) <<
+		"]    text: [" << linphone_ice_state_to_string(linphone_call_stats_get_ice_state(textStats)) << "]";
 }
 
 void IceAgent::updateLocalMediaDescriptionFromIce (SalMediaDescription *desc) {
@@ -297,9 +318,9 @@ void IceAgent::updateLocalMediaDescriptionFromIce (SalMediaDescription *desc) {
 		if (!sal_stream_description_active(stream) || !cl)
 			continue;
 		if (ice_check_list_state(cl) == ICL_Completed) {
-			/* Set this to false once flexisip are updated everywhere, let's say in December 2016 */
 			LinphoneConfig *config = linphone_core_get_config(mediaSession.getPrivate()->getCore());
-			bool useNoRtpProxy = lp_config_get_int(config, "sip", "ice_uses_nortpproxy", true);
+			// TODO: Remove `ice_uses_nortpproxy` option, let's say in December 2018.
+			bool useNoRtpProxy = lp_config_get_int(config, "sip", "ice_uses_nortpproxy", false);
 			if (useNoRtpProxy)
 				stream->set_nortpproxy = true;
 			result = ice_check_list_selected_valid_local_candidate(ice_session_check_list(iceSession, i), &rtpCandidate, &rtcpCandidate);
@@ -343,9 +364,11 @@ void IceAgent::updateLocalMediaDescriptionFromIce (SalMediaDescription *desc) {
 					continue;
 				if (defaultAddr[0] == '\0')
 					defaultAddr = desc->addr;
-				/* Only include the candidates matching the default destination for each component of the stream if the state is Completed as specified in RFC5245 section 9.1.2.2. */
-				if ((ice_check_list_state(cl) == ICL_Completed)
-					&& !((iceCandidate->taddr.port == defaultPort) && (strlen(iceCandidate->taddr.ip) == strlen(defaultAddr)) && (strcmp(iceCandidate->taddr.ip, defaultAddr) == 0)))
+				// Only include the candidates matching the default destination for each component of the stream if the state is Completed as specified in RFC5245 section 9.1.2.2.
+				if (
+					ice_check_list_state(cl) == ICL_Completed &&
+					!((iceCandidate->taddr.port == defaultPort) && (strlen(iceCandidate->taddr.ip) == strlen(defaultAddr)) && (strcmp(iceCandidate->taddr.ip, defaultAddr) == 0))
+				)
 					continue;
 				strncpy(salCandidate->foundation, iceCandidate->foundation, sizeof(salCandidate->foundation));
 				salCandidate->componentID = iceCandidate->componentID;
@@ -387,7 +410,7 @@ void IceAgent::addLocalIceCandidates (int family, const char *addr, IceCheckList
 		ice_add_local_candidate(audioCl, "host", family, addr, rtpPort, 1, nullptr);
 		ice_add_local_candidate(audioCl, "host", family, addr, rtcpPort, 2, nullptr);
 		LinphoneCallStats *audioStats = mediaSession.getPrivate()->getStats(LinphoneStreamTypeAudio);
-		audioStats->ice_state = LinphoneIceStateInProgress;
+		_linphone_call_stats_set_ice_state(audioStats, LinphoneIceStateInProgress);
 	}
 	LinphoneCore *core = mediaSession.getPrivate()->getCore();
 	if (linphone_core_video_enabled(core) && videoCl && (ice_check_list_state(videoCl) != ICL_Completed) && !ice_check_list_candidates_gathered(videoCl)) {
@@ -396,7 +419,7 @@ void IceAgent::addLocalIceCandidates (int family, const char *addr, IceCheckList
 		ice_add_local_candidate(videoCl, "host", family, addr, rtpPort, 1, nullptr);
 		ice_add_local_candidate(videoCl, "host", family, addr, rtcpPort, 2, nullptr);
 		LinphoneCallStats *videoStats = mediaSession.getPrivate()->getStats(LinphoneStreamTypeVideo);
-		videoStats->ice_state = LinphoneIceStateInProgress;
+		_linphone_call_stats_set_ice_state(videoStats, LinphoneIceStateInProgress);
 	}
 	if (mediaSession.getMediaParams()->realtimeTextEnabled() && textCl && (ice_check_list_state(textCl) != ICL_Completed) && !ice_check_list_candidates_gathered(textCl)) {
 		int rtpPort = mediaSession.getPrivate()->getRtpPort(LinphoneStreamTypeText);
@@ -404,7 +427,7 @@ void IceAgent::addLocalIceCandidates (int family, const char *addr, IceCheckList
 		ice_add_local_candidate(textCl, "host", family, addr, rtpPort, 1, nullptr);
 		ice_add_local_candidate(textCl, "host", family, addr, rtcpPort, 2, nullptr);
 		LinphoneCallStats *textStats = mediaSession.getPrivate()->getStats(LinphoneStreamTypeText);
-		textStats->ice_state = LinphoneIceStateInProgress;
+		_linphone_call_stats_set_ice_state(textStats, LinphoneIceStateInProgress);
 	}
 }
 
@@ -441,7 +464,7 @@ bool IceAgent::checkForIceRestartAndSetRemoteCredentials (const SalMediaDescript
 		if (cl && (stream->ice_pwd[0] != '\0') && (stream->ice_ufrag[0] != '\0')) {
 			if (ice_check_list_remote_credentials_changed(cl, stream->ice_ufrag, stream->ice_pwd)) {
 				if (!iceRestarted && ice_check_list_get_remote_ufrag(cl) && ice_check_list_get_remote_pwd(cl)) {
-					/* Restart only if remote ufrag/paswd was already set */
+					// Restart only if remote ufrag/paswd was already set.
 					ice_session_restart(iceSession, isOffer ? IR_Controlled : IR_Controlling);
 					iceRestarted = true;
 				}
@@ -494,14 +517,17 @@ void IceAgent::createIceCheckListsAndParseIceAttributes (const SalMediaDescripti
 				continue;
 			const char *addr = nullptr;
 			int port = 0;
-			getIceDefaultAddrAndPort(candidate->componentID, md, stream, &addr, &port);
+			getIceDefaultAddrAndPort(static_cast<uint16_t>(candidate->componentID), md, stream, &addr, &port);
 			if (addr && (candidate->port == port) && (strlen(candidate->addr) == strlen(addr)) && (strcmp(candidate->addr, addr) == 0))
 				defaultCandidate = true;
 			int family = AF_INET;
 			if (strchr(candidate->addr, ':'))
 				family = AF_INET6;
-			ice_add_remote_candidate(cl, candidate->type, family, candidate->addr, candidate->port, candidate->componentID,
-				candidate->priority, candidate->foundation, defaultCandidate);
+			ice_add_remote_candidate(
+				cl, candidate->type, family, candidate->addr, candidate->port,
+				static_cast<uint16_t>(candidate->componentID),
+				candidate->priority, candidate->foundation, defaultCandidate
+			);
 		}
 		if (!iceRestarted) {
 			bool_t losingPairsAdded = false;
@@ -511,16 +537,19 @@ void IceAgent::createIceCheckListsAndParseIceAttributes (const SalMediaDescripti
 				int port = 0;
 				int componentID = j + 1;
 				if (remoteCandidate->addr[0] == '\0') break;
-				getIceDefaultAddrAndPort(componentID, md, stream, &addr, &port);
-				if (j == 0) /* If we receive a re-invite and we finished ICE processing on our side, use the candidates given by the remote. */
+				getIceDefaultAddrAndPort(static_cast<uint16_t>(componentID), md, stream, &addr, &port);
+
+				// If we receive a re-invite and we finished ICE processing on our side, use the candidates given by the remote.
+				if (j == 0)
 					ice_check_list_unselect_valid_pairs(cl);
+
 				int remoteFamily = AF_INET;
 				if (strchr(remoteCandidate->addr, ':'))
 					remoteFamily = AF_INET6;
 				int family = AF_INET;
 				if (strchr(addr, ':'))
 					family = AF_INET6;
-				ice_add_losing_pair(cl, j + 1, remoteFamily, remoteCandidate->addr, remoteCandidate->port, family, addr, port);
+				ice_add_losing_pair(cl, static_cast<uint16_t>(j + 1), remoteFamily, remoteCandidate->addr, remoteCandidate->port, family, addr, port);
 				losingPairsAdded = true;
 			}
 			if (losingPairsAdded)
@@ -554,11 +583,10 @@ int IceAgent::gatherIceCandidates () {
 	} else
 		lWarning() << "ICE is used without STUN server";
 	LinphoneCore *core = mediaSession.getPrivate()->getCore();
-	linphone_core_notify_display_status(core, _("ICE local candidates gathering in progress..."));
 	ice_session_enable_forced_relay(iceSession, core->forced_ice_relay);
 	ice_session_enable_short_turn_refresh(iceSession, core->short_turn_refresh);
 
-	/* Gather local host candidates. */
+	// Gather local host candidates.
 	char localAddr[64];
 	if (mediaSession.getPrivate()->getAf() == AF_INET6) {
 		if (linphone_core_get_local_ip_for(AF_INET6, nullptr, localAddr) < 0) {
@@ -577,7 +605,7 @@ int IceAgent::gatherIceCandidates () {
 	if (ai && natPolicy && linphone_nat_policy_stun_server_activated(natPolicy)) {
 		string server = linphone_nat_policy_get_stun_server(natPolicy);
 		lInfo() << "ICE: gathering candidates from [" << server << "] using " << (linphone_nat_policy_turn_enabled(natPolicy) ? "TURN" : "STUN");
-		/* Gather local srflx candidates */
+		// Gather local srflx candidates.
 		ice_session_enable_turn(iceSession, linphone_nat_policy_turn_enabled(natPolicy));
 		ice_session_set_stun_auth_requested_cb(iceSession, MediaSessionPrivate::stunAuthRequestedCb, &mediaSession);
 		return ice_session_gather_candidates(iceSession, ai->ai_addr, (socklen_t)ai->ai_addrlen) ? 1 : 0;
@@ -590,7 +618,13 @@ int IceAgent::gatherIceCandidates () {
 	return 0;
 }
 
-void IceAgent::getIceDefaultAddrAndPort (uint16_t componentID, const SalMediaDescription *md, const SalStreamDescription *stream, const char **addr, int *port) {
+void IceAgent::getIceDefaultAddrAndPort (
+	uint16_t componentID,
+	const SalMediaDescription *md,
+	const SalStreamDescription *stream,
+	const char **addr,
+	int *port
+) {
 	if (componentID == 1) {
 		*addr = stream->rtp_addr;
 		*port = stream->rtp_port;
@@ -607,8 +641,8 @@ void IceAgent::getIceDefaultAddrAndPort (uint16_t componentID, const SalMediaDes
  * the DNS resolution returned. If a NAT64 address is present, use it, otherwise if an IPv4 address
  * is present, use it, otherwise use an IPv6 address if it is present.
  */
-const struct addrinfo * IceAgent::getIcePreferredStunServerAddrinfo (const struct addrinfo *ai) {
-	/* Search for NAT64 addrinfo */
+const struct addrinfo *IceAgent::getIcePreferredStunServerAddrinfo (const struct addrinfo *ai) {
+	// Search for NAT64 addrinfo.
 	const struct addrinfo *it = ai;
 	while (it) {
 		if (it->ai_family == AF_INET6) {
@@ -621,7 +655,7 @@ const struct addrinfo * IceAgent::getIcePreferredStunServerAddrinfo (const struc
 	}
 	const struct addrinfo *preferredAi = it;
 	if (!preferredAi) {
-		/* Search for IPv4 addrinfo */
+		// Search for IPv4 addrinfo.
 		it = ai;
 		while (it) {
 			if (it->ai_family == AF_INET)
@@ -633,7 +667,7 @@ const struct addrinfo * IceAgent::getIcePreferredStunServerAddrinfo (const struc
 		preferredAi = it;
 	}
 	if (!preferredAi) {
-		/* Search for IPv6 addrinfo */
+		// Search for IPv6 addrinfo.
 		it = ai;
 		while (it) {
 			if (it->ai_family == AF_INET6)
@@ -665,25 +699,28 @@ bool IceAgent::iceParamsFoundInRemoteMediaDescription (const SalMediaDescription
 }
 
 void IceAgent::updateIceStateInCallStatsForStream (LinphoneCallStats *stats, IceCheckList *cl) {
-	if (ice_check_list_state(cl) == ICL_Completed) {
-		switch (ice_check_list_selected_valid_candidate_type(cl)) {
-			case ICT_HostCandidate:
-				stats->ice_state = LinphoneIceStateHostConnection;
-				break;
-			case ICT_ServerReflexiveCandidate:
-			case ICT_PeerReflexiveCandidate:
-				stats->ice_state = LinphoneIceStateReflexiveConnection;
-				break;
-			case ICT_RelayedCandidate:
-				stats->ice_state = LinphoneIceStateRelayConnection;
-				break;
-			case ICT_CandidateInvalid:
-			case ICT_CandidateTypeMax:
-				/* Shall not happen */
-				break;
-		}
-	} else
-		stats->ice_state = LinphoneIceStateFailed;
+	if (ice_check_list_state(cl) != ICL_Completed) {
+		_linphone_call_stats_set_ice_state(stats, LinphoneIceStateFailed);
+		return;
+	}
+
+	switch (ice_check_list_selected_valid_candidate_type(cl)) {
+		case ICT_HostCandidate:
+			_linphone_call_stats_set_ice_state(stats, LinphoneIceStateHostConnection);
+			break;
+		case ICT_ServerReflexiveCandidate:
+		case ICT_PeerReflexiveCandidate:
+			_linphone_call_stats_set_ice_state(stats, LinphoneIceStateReflexiveConnection);
+			break;
+		case ICT_RelayedCandidate:
+			_linphone_call_stats_set_ice_state(stats, LinphoneIceStateRelayConnection);
+			break;
+		case ICT_CandidateInvalid:
+		case ICT_CandidateTypeMax:
+			// Shall not happen.
+			L_ASSERT(false);
+			break;
+	}
 }
 
 LINPHONE_END_NAMESPACE

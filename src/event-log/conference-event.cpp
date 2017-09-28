@@ -19,43 +19,39 @@
 #include "address/address.h"
 #include "conference-event-p.h"
 
-#include "conference-event.h"
-
 // =============================================================================
 
 using namespace std;
 
 LINPHONE_BEGIN_NAMESPACE
 
-ConferenceEvent::ConferenceEvent (Type type, const shared_ptr<const Address> &address) :
+ConferenceEvent::ConferenceEvent (Type type, const Address &address) :
 	EventLog(*new ConferenceEventPrivate, type) {
-	L_D(ConferenceEvent);
-	L_ASSERT(type == TypeConferenceCreated || type == TypeConferenceDestroyed);
-	L_ASSERT(address);
-	d->address = make_shared<Address>(*address);
+	L_D();
+	L_ASSERT(type == Type::ConferenceCreated || type == Type::ConferenceDestroyed);
+	d->address = address;
 }
 
 ConferenceEvent::ConferenceEvent (const ConferenceEvent &src) : ConferenceEvent(src.getType(), src.getAddress()) {}
 
-ConferenceEvent::ConferenceEvent (ConferenceEventPrivate &p, Type type, const shared_ptr<const Address> &address) :
+ConferenceEvent::ConferenceEvent (ConferenceEventPrivate &p, Type type, const Address &address) :
 	EventLog(p, type) {
-	L_D(ConferenceEvent);
-	L_ASSERT(address);
-	d->address = make_shared<Address>(*address);
+	L_D();
+	d->address = address;
 }
 
 ConferenceEvent &ConferenceEvent::operator= (const ConferenceEvent &src) {
-	L_D(ConferenceEvent);
+	L_D();
 	if (this != &src) {
 		EventLog::operator=(src);
-		d->address = make_shared<Address>(*src.getPrivate()->address);
+		d->address = src.getPrivate()->address;
 	}
 
 	return *this;
 }
 
-shared_ptr<const Address> ConferenceEvent::getAddress () const {
-	L_D(const ConferenceEvent);
+const Address &ConferenceEvent::getAddress () const {
+	L_D();
 	return d->address;
 }
 

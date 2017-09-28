@@ -19,13 +19,13 @@
 #ifndef _CLONABLE_OBJECT_H_
 #define _CLONABLE_OBJECT_H_
 
-#include "linphone/utils/general.h"
+#include "property-container.h"
 
 // =============================================================================
 
 LINPHONE_BEGIN_NAMESPACE
 
-class LINPHONE_PUBLIC ClonableObject {
+class LINPHONE_PUBLIC ClonableObject : public PropertyContainer {
 public:
 	virtual ~ClonableObject ();
 

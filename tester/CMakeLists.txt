@@ -20,7 +20,7 @@
 #
 ############################################################################
 
-set(OTHER_LIBS_FOR_TESTER ${BCTOOLBOX_LIBRARIES} ${ORTP_LIBRARIES} ${MEDIASTREAMER2_LIBRARIES} ${BELLESIP_LIBRARIES} ${XML2_LIBRARIES})
+set(OTHER_LIBS_FOR_TESTER ${BCTOOLBOX_LIBRARIES} ${ORTP_LIBRARIES} ${MEDIASTREAMER2_LIBRARIES} ${BELLESIP_LIBRARIES} ${XML2_LIBRARIES} ${XSD_LIBRARIES})
 if(INTL_FOUND)
 	list(APPEND OTHER_LIBS_FOR_TESTER ${INTL_LIBRARIES})
 endif()
@@ -197,8 +197,11 @@ set(SOURCE_FILES_C
 
 set(SOURCE_FILES_CXX
 	clonable-object-tester.cpp
+	conference-event-tester.cpp
+	conference-tester.cpp
 	cpim-tester.cpp
 	events-db-tester.cpp
+	property-container-tester.cpp
 )
 
 set(SOURCE_FILES_OBJC )
@@ -207,6 +210,9 @@ if(APPLE)
 		list(APPEND SOURCE_FILES_OBJC liblinphone_tester_ios.m)
 	endif()
 endif()
+
+# TODO: Remove me later!
+list(REMOVE_ITEM STRICT_OPTIONS_CPP "-Wconversion" "-Werror=conversion" "-Wcast-align" "-Werror=cast-align")
 
 bc_apply_compile_flags(SOURCE_FILES_C STRICT_OPTIONS_CPP STRICT_OPTIONS_C)
 bc_apply_compile_flags(SOURCE_FILES_CXX STRICT_OPTIONS_CPP STRICT_OPTIONS_CXX)

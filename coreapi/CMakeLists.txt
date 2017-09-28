@@ -33,7 +33,6 @@ if(ANDROID)
 	find_package(Support REQUIRED)
 endif()
 
-
 list(APPEND LINPHONE_PRIVATE_HEADER_FILES
 	bellesip_sal/sal_impl.h
 	carddav.h
@@ -70,7 +69,6 @@ set(LINPHONE_SOURCE_FILES_C
 	buffer.c
 	callbacks.c
 	call_log.c
-	call_params.c
 	carddav.c
 	chat.c
 	chat_file_transfer.c
@@ -129,6 +127,7 @@ set(LINPHONE_SOURCE_FILES_CXX
 	sal/sal.cc
 	tester_utils.cpp
 )
+set(LINPHONE_INCLUDE_DIRS ${LINPHONE_INCLUDE_DIRS})
 if(ANDROID)
 	list(APPEND LINPHONE_SOURCE_FILES_CXX linphonecore_jni.cc)
 	set_source_files_properties(linphonecore_jni.cc PROPERTIES COMPILE_DEFINITIONS "USE_JAVAH")
@@ -165,6 +164,7 @@ set(LIBS
 	${ORTP_LIBRARIES}
 	${XML2_LIBRARIES}
 	${BELR_LIBRARIES}
+	${LIBXSD_LIBRARIES}
 )
 if(WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 	list(APPEND LIBS "Ws2_32")

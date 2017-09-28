@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <cstdlib>
 #include <sstream>
 
@@ -42,6 +43,8 @@ bool Utils::iequals (const string &a, const string &b) {
 	return true;
 }
 
+// -----------------------------------------------------------------------------
+
 vector<string> Utils::split (const string &str, const string &delimiter) {
 	vector<string> out;
 
@@ -52,6 +55,8 @@ vector<string> Utils::split (const string &str, const string &delimiter) {
 
 	return out;
 }
+
+// -----------------------------------------------------------------------------
 
 #ifndef __ANDROID__
 #define TO_STRING_IMPL(TYPE) \
@@ -77,36 +82,88 @@ TO_STRING_IMPL(float)
 TO_STRING_IMPL(double)
 TO_STRING_IMPL(long double)
 
-int Utils::stoi (const string &str, size_t *idx, int base) {
-	char *p;
-	int v = strtol(str.c_str(), &p, base);
+#undef TO_STRING_IMPL
 
-	if (idx)
-		*idx = p - str.c_str();
-
-	return v;
+string Utils::toString (const void *val) {
+	ostringstream ss;
+	ss << val;
+	return ss.str();
 }
+
+// -----------------------------------------------------------------------------
+
+#define STRING_TO_NUMBER_IMPL(TYPE, SUFFIX) \
+	TYPE Utils::sto ## SUFFIX(const string &str, size_t * idx, int base) { \
+		return sto ## SUFFIX(str.c_str(), idx, base); \
+	} \
+	TYPE Utils::sto ## SUFFIX(const char *str, size_t * idx, int base) { \
+		char *p; \
+		TYPE v = strto ## SUFFIX(str, &p, base); \
+		if (idx) \
+			*idx = static_cast<size_t>(p - str); \
+		return v; \
+	} \
+
+#define STRING_TO_NUMBER_IMPL_BASE_LESS(TYPE, SUFFIX) \
+	TYPE Utils::sto ## SUFFIX(const string &str, size_t * idx) { \
+		return sto ## SUFFIX(str.c_str(), idx); \
+	} \
+	TYPE Utils::sto ## SUFFIX(const char *str, size_t * idx) { \
+		char *p; \
+		TYPE v = strto ## SUFFIX(str, &p); \
+		if (idx) \
+			*idx = static_cast<size_t>(p - str); \
+		return v; \
+	} \
+
+#define strtoi(STR, IDX, BASE) static_cast<int>(strtol(STR, IDX, BASE))
+STRING_TO_NUMBER_IMPL(int, i)
+#undef strtoi
+
+STRING_TO_NUMBER_IMPL(long long, ll)
+STRING_TO_NUMBER_IMPL(unsigned long long, ull)
+
+STRING_TO_NUMBER_IMPL_BASE_LESS(double, d)
+STRING_TO_NUMBER_IMPL_BASE_LESS(float, f)
+
+#undef STRING_TO_NUMBER_IMPL
+#undef STRING_TO_NUMBER_IMPL_BASE_LESS
+
+bool Utils::stob (const string &str) {
+	const string lowerStr = stringToLower(str);
+	return !lowerStr.empty() && (lowerStr == "true" || lowerStr == "1");
+}
+
+// -----------------------------------------------------------------------------
+
+string Utils::stringToLower (const string &str) {
+	string result(str.size(), ' ');
+	transform(str.cbegin(), str.cend(), result.begin(), ::tolower);
+	return result;
+}
+
+// -----------------------------------------------------------------------------
 
 char *Utils::utf8ToChar (uint32_t ic) {
 	char *result = new char[5];
 	int size = 0;
 	if (ic < 0x80) {
-		result[0] = ic;
+		result[0] = static_cast<char>(ic);
 		size = 1;
 	} else if (ic < 0x800) {
-		result[1] = 0x80 + ((ic & 0x3F));
-		result[0] = 0xC0 + ((ic >> 6) & 0x1F);
+		result[1] = static_cast<char>(0x80 + ((ic & 0x3F)));
+		result[0] = static_cast<char>(0xC0 + ((ic >> 6) & 0x1F));
 		size = 2;
 	} else if (ic < 0x100000) {
-		result[2] = 0x80 + (ic & 0x3F);
-		result[1] = 0x80 + ((ic >> 6) & 0x3F);
-		result[0] = 0xE0 + ((ic >> 12) & 0xF);
+		result[2] = static_cast<char>(0x80 + (ic & 0x3F));
+		result[1] = static_cast<char>(0x80 + ((ic >> 6) & 0x3F));
+		result[0] = static_cast<char>(0xE0 + ((ic >> 12) & 0xF));
 		size = 3;
 	} else if (ic < 0x110000) {
-		result[3] = 0x80 + (ic & 0x3F);
-		result[2] = 0x80 + ((ic >> 6) & 0x3F);
-		result[1] = 0x80 + ((ic >> 12) & 0x3F);
-		result[0] = 0xF0 + ((ic >> 18) & 0x7);
+		result[3] = static_cast<char>(0x80 + (ic & 0x3F));
+		result[2] = static_cast<char>(0x80 + ((ic >> 6) & 0x3F));
+		result[1] = static_cast<char>(0x80 + ((ic >> 12) & 0x3F));
+		result[0] = static_cast<char>(0xF0 + ((ic >> 18) & 0x7));
 		size = 4;
 	}
 	result[size] = '\0';

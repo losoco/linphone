@@ -22,6 +22,10 @@
 #include <list>
 #include <memory>
 
+#include "imdn.h"
+#include "linphone/api/c-types.h"
+#include "linphone/api/c-chat-message.h"
+
 #include "object/object.h"
 
 // =============================================================================
@@ -54,37 +58,69 @@ public:
 		Displayed
 	};
 
+	ChatMessage (const std::shared_ptr<ChatRoom> &room);
+	virtual ~ChatMessage () = default;
+
+	LinphoneChatMessage * getBackPtr();
+
 	std::shared_ptr<ChatRoom> getChatRoom () const;
 
+	// -----------------------------------------------------------------------------
+	// Methods
+	// -----------------------------------------------------------------------------
+
+	void updateState(State state);
+	void send();
+	void reSend();
+	void sendDeliveryNotification(LinphoneReason reason);
+	void sendDisplayNotification();
+	int uploadFile();
+	int downloadFile();
+	void cancelFileTransfer();
+	int putCharacter(uint32_t character);
+
+	// -----------------------------------------------------------------------------
+	// Getters & setters
+	// -----------------------------------------------------------------------------
+
 	Direction getDirection () const;
+	bool isOutgoing () const;
+	bool isIncoming () const;
 
-	std::shared_ptr<const Address> getFromAddress () const;
-	std::shared_ptr<const Address> getToAddress () const;
-	std::shared_ptr<const Address> getLocalAddress () const;
-	std::shared_ptr<const Address> getRemoteAddress () const;
-
-	State getState () const;
-
-	std::shared_ptr<const ErrorInfo> getErrorInfo () const;
-
-	std::string getContentType () const;
-
-	std::string getText () const;
-	void setText (const std::string &text);
-
-	void send () const;
-
-	bool containsReadableText () const;
-
-	bool isSecured () const;
-
+	std::string getExternalBodyUrl() const;
+	void setExternalBodyUrl(const std::string &url);
+	
 	time_t getTime () const;
 
-	std::string getId () const;
+	bool isSecured () const;
+	void setIsSecured(bool isSecured);
 
+	State getState() const;
+	
+	std::string getId () const;
+	void setId (std::string);
+
+	bool isRead() const;
+	
 	std::string getAppdata () const;
 	void setAppdata (const std::string &appData);
+	
+	std::shared_ptr<Address> getFromAddress () const;
+	void setFromAddress(std::shared_ptr<Address> from);
 
+	std::shared_ptr<Address> getToAddress () const;
+	void setToAddress(std::shared_ptr<Address> to);
+
+	std::string getFileTransferFilepath() const;
+	void setFileTransferFilepath(const std::string &path);
+
+	bool isToBeStored() const;
+	void setIsToBeStored(bool store);
+
+	const LinphoneErrorInfo * getErrorInfo () const;
+	
+	bool isReadOnly () const;
+	
 	std::list<std::shared_ptr<const Content> > getContents () const;
 	void addContent (const std::shared_ptr<Content> &content);
 	void removeContent (const std::shared_ptr<const Content> &content);
@@ -93,9 +129,10 @@ public:
 	void addCustomHeader (const std::string &headerName, const std::string &headerValue);
 	void removeCustomHeader (const std::string &headerName);
 
-private:
-	ChatMessage (ChatMessagePrivate &p);
+protected:
+	explicit ChatMessage (ChatMessagePrivate &p);
 
+private:
 	L_DECLARE_PRIVATE(ChatMessage);
 	L_DISABLE_COPY(ChatMessage);
 };

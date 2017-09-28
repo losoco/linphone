@@ -16,15 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "linphone/api/c-chat-message.h"
 #include "linphone/api/c-event-log.h"
 
-#include "c-wrapper/c-tools.h"
-
+#include "c-wrapper/c-wrapper.h"
+#include "call/call.h"
+#include "chat/chat-message.h"
 #include "event-log/call-event.h"
+#include "event-log/chat-message-event.h"
 #include "event-log/conference-participant-event.h"
-#include "event-log/message-event.h"
 
 // =============================================================================
+
+L_DECLARE_C_CLONABLE_STRUCT_IMPL(EventLog);
+L_DECLARE_C_CLONABLE_STRUCT_IMPL(CallEvent);
+L_DECLARE_C_CLONABLE_STRUCT_IMPL(ConferenceEvent);
+L_DECLARE_C_CLONABLE_STRUCT_IMPL(ConferenceParticipantEvent);
+L_DECLARE_C_CLONABLE_STRUCT_IMPL(ChatMessageEvent);
 
 using namespace std;
 
@@ -32,52 +40,48 @@ using namespace std;
 // Event log.
 // -----------------------------------------------------------------------------
 
-L_DECLARE_C_STRUCT_IMPL(EventLog, event_log);
-L_DECLARE_C_STRUCT_NEW_DEFAULT(EventLog, event_log);
-
-LinphoneEventLogType linphone_event_log_get_type (const LinphoneEventLog *eventLog) {
-	return static_cast<LinphoneEventLogType>(eventLog->cppPtr->getType());
+LinphoneEventLog *linphone_event_log_new () {
+	LinphoneEventLog *event_log = _linphone_EventLog_init();
+	L_SET_CPP_PTR_FROM_C_OBJECT(event_log, new LINPHONE_NAMESPACE::EventLog());
+	return event_log;
 }
 
-// -----------------------------------------------------------------------------
-// Message event.
-// -----------------------------------------------------------------------------
-
-L_DECLARE_C_STRUCT_IMPL(MessageEvent, message_event);
-
-LinphoneMessageEvent *linphone_message_event_new (LinphoneMessage *message) {
-	LinphoneMessageEvent *object = _linphone_message_event_init();
-	// TODO: call make_shared with cppPtr.
-	object->cppPtr = make_shared<LINPHONE_NAMESPACE::MessageEvent>(nullptr);
-	return object;
+LinphoneEventLog *linphone_event_log_ref (LinphoneEventLog *event_log) {
+	belle_sip_object_ref(event_log);
+	return event_log;
 }
 
-LinphoneMessage *linphone_message_event_get_message (const LinphoneMessageEvent *messageEvent) {
-	// TODO.
-	return nullptr;
+LinphoneEventLogType linphone_event_log_get_type (const LinphoneEventLog *event_log) {
+	return static_cast<LinphoneEventLogType>(
+		L_GET_CPP_PTR_FROM_C_OBJECT(event_log)->getType()
+	);
 }
 
 // -----------------------------------------------------------------------------
 // Call event.
 // -----------------------------------------------------------------------------
 
-// L_DECLARE_C_STRUCT_IMPL(CallEvent, call_event);
-
 LinphoneCallEvent *linphone_call_event_new (LinphoneEventLogType type, LinphoneCall *call) {
-	// TODO.
-	return nullptr;
+	LinphoneCallEvent *call_event = _linphone_CallEvent_init();
+	L_SET_CPP_PTR_FROM_C_OBJECT(
+		call_event,
+		new LINPHONE_NAMESPACE::CallEvent(
+			static_cast<LINPHONE_NAMESPACE::EventLog::Type>(type),
+			L_GET_CPP_PTR_FROM_C_OBJECT(call)
+		)
+	);
+	return call_event;
 }
 
 LinphoneCall *linphone_call_event_get_call (const LinphoneCallEvent *call_event) {
-	// TODO.
-	return nullptr;
+	return L_GET_C_BACK_PTR(
+		L_GET_CPP_PTR_FROM_C_OBJECT(call_event)->getCall()
+	);
 }
 
 // -----------------------------------------------------------------------------
 // Conference event.
 // -----------------------------------------------------------------------------
-
-// L_DECLARE_C_STRUCT_IMPL(ConferenceEvent, conference_event);
 
 LinphoneConferenceEvent *linphone_conference_event_new (
 	LinphoneEventLogType type,
@@ -96,18 +100,39 @@ const LinphoneAddress *linphone_conference_event_get_address (const LinphoneConf
 // Conference participant event.
 // -----------------------------------------------------------------------------
 
-// L_DECLARE_C_STRUCT_IMPL(ConferenceParticipantEvent, conference_participant_event);
-
 LinphoneConferenceParticipantEvent *linphone_conference_participant_event_new (
 	LinphoneEventLogType type,
-	const LinphoneAddress *conference_address,
-	const LinphoneAddress *participant_address
+	const LinphoneAddress *conferenceAddress,
+	const LinphoneAddress *participantAddress
 ) {
 	// TODO.
 	return nullptr;
 }
 
-const LinphoneAddress *linphone_conference_participant_event_get_participant_address (const LinphoneConferenceParticipantEvent *conference_participant_event) {
+const LinphoneAddress *linphone_conference_participant_event_get_participant_address (
+	const LinphoneConferenceParticipantEvent *conference_participant_event
+) {
 	// TODO.
 	return nullptr;
+}
+
+// -----------------------------------------------------------------------------
+// Message event.
+// -----------------------------------------------------------------------------
+
+LinphoneChatMessageEvent *linphone_chat_message_event_new (LinphoneChatMessage *chat_message) {
+	LinphoneChatMessageEvent *chat_message_event = _linphone_ChatMessageEvent_init();
+	L_SET_CPP_PTR_FROM_C_OBJECT(
+		chat_message_event,
+		new LINPHONE_NAMESPACE::ChatMessageEvent(
+			L_GET_CPP_PTR_FROM_C_OBJECT(chat_message)
+		)
+	);
+	return chat_message_event;
+}
+
+LinphoneChatMessage *linphone_chat_message_event_get_chat_message (const LinphoneChatMessageEvent *chat_message_event) {
+	return L_GET_C_BACK_PTR(
+		L_GET_CPP_PTR_FROM_C_OBJECT(chat_message_event)->getChatMessage()
+	);
 }

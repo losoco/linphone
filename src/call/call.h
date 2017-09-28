@@ -19,20 +19,14 @@
 #ifndef _CALL_CALL_H_
 #define _CALL_CALL_H_
 
-#include <memory>
-
-#include "linphone/types.h"
-
-#include "object/object.h"
-#include "address/address.h"
-#include "call/call-listener.h"
 #include "conference/params/media-session-params.h"
-#include "sal/sal_call.hh"
+#include "object/object.h"
 
 // =============================================================================
 
 LINPHONE_BEGIN_NAMESPACE
 
+class Address;
 class CallPrivate;
 class CallSessionPrivate;
 class MediaSessionPrivate;
@@ -42,12 +36,20 @@ class Call : public Object {
 	friend class MediaSessionPrivate;
 
 public:
-	Call (LinphoneCall *call, LinphoneCore *core, LinphoneCallDir direction, const Address &from, const Address &to,
-		LinphoneProxyConfig *cfg, SalCall *op, const std::shared_ptr<MediaSessionParams> msp);
+	Call (
+		LinphoneCall *call,
+		LinphoneCore *core,
+		LinphoneCallDir direction,
+		const Address &from,
+		const Address &to,
+		LinphoneProxyConfig *cfg,
+		SalCall *op,
+		const MediaSessionParams *msp
+	);
 
-	LinphoneStatus accept (const std::shared_ptr<MediaSessionParams> msp = nullptr);
-	LinphoneStatus acceptEarlyMedia (const std::shared_ptr<MediaSessionParams> msp = nullptr);
-	LinphoneStatus acceptUpdate (const std::shared_ptr<MediaSessionParams> msp);
+	LinphoneStatus accept (const MediaSessionParams *msp = nullptr);
+	LinphoneStatus acceptEarlyMedia (const MediaSessionParams *msp = nullptr);
+	LinphoneStatus acceptUpdate (const MediaSessionParams *msp);
 	LinphoneStatus decline (LinphoneReason reason);
 	LinphoneStatus decline (const LinphoneErrorInfo *ei);
 	LinphoneStatus pause ();
@@ -55,10 +57,10 @@ public:
 	void sendVfuRequest ();
 	void startRecording ();
 	void stopRecording ();
-	LinphoneStatus takePreviewSnapshot (const std::string& file);
-	LinphoneStatus takeVideoSnapshot (const std::string& file);
+	LinphoneStatus takePreviewSnapshot (const std::string &file);
+	LinphoneStatus takeVideoSnapshot (const std::string &file);
 	LinphoneStatus terminate (const LinphoneErrorInfo *ei = nullptr);
-	LinphoneStatus update (const std::shared_ptr<MediaSessionParams> msp = nullptr);
+	LinphoneStatus update (const MediaSessionParams *msp = nullptr);
 	void zoomVideo (float zoomFactor, float *cx, float *cy);
 
 	bool cameraEnabled () const;
@@ -68,36 +70,36 @@ public:
 	void enableEchoCancellation (bool value);
 	void enableEchoLimiter (bool value);
 	bool getAllMuted () const;
-	LinphoneCallStats * getAudioStats () const;
+	LinphoneCallStats *getAudioStats () const;
 	std::string getAuthenticationToken () const;
 	bool getAuthenticationTokenVerified () const;
 	float getAverageQuality () const;
-	LinphoneCore * getCore () const;
-	const std::shared_ptr<MediaSessionParams> getCurrentParams () const;
+	LinphoneCore *getCore () const;
+	const MediaSessionParams *getCurrentParams () const;
 	float getCurrentQuality () const;
 	LinphoneCallDir getDirection () const;
 	int getDuration () const;
-	const LinphoneErrorInfo * getErrorInfo () const;
-	LinphoneCallLog * getLog () const;
-	RtpTransport * getMetaRtcpTransport (int streamIndex);
-	RtpTransport * getMetaRtpTransport (int streamIndex);
+	const LinphoneErrorInfo *getErrorInfo () const;
+	LinphoneCallLog *getLog () const;
+	RtpTransport *getMetaRtcpTransport (int streamIndex) const;
+	RtpTransport *getMetaRtpTransport (int streamIndex) const;
 	float getMicrophoneVolumeGain () const;
-	void * getNativeVideoWindowId () const;
-	const std::shared_ptr<MediaSessionParams> getParams () const;
+	void *getNativeVideoWindowId () const;
+	const MediaSessionParams *getParams () const;
 	float getPlayVolume () const;
 	LinphoneReason getReason () const;
 	float getRecordVolume () const;
-	const Address& getRemoteAddress () const;
+	const Address &getRemoteAddress () const;
 	std::string getRemoteAddressAsString () const;
 	std::string getRemoteContact () const;
-	const std::shared_ptr<MediaSessionParams> getRemoteParams () const;
+	const MediaSessionParams *getRemoteParams () const;
 	float getSpeakerVolumeGain () const;
 	LinphoneCallState getState () const;
-	LinphoneCallStats * getStats (LinphoneStreamType type) const;
-	int getStreamCount ();
+	LinphoneCallStats *getStats (LinphoneStreamType type) const;
+	int getStreamCount () const;
 	MSFormatType getStreamType (int streamIndex) const;
-	LinphoneCallStats * getTextStats () const;
-	LinphoneCallStats * getVideoStats () const;
+	LinphoneCallStats *getTextStats () const;
+	LinphoneCallStats *getVideoStats () const;
 	bool mediaInProgress () const;
 	void setAuthenticationTokenVerified (bool value);
 	void setMicrophoneVolumeGain (float value);

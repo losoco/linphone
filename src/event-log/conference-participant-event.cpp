@@ -18,7 +18,6 @@
 
 #include "address/address.h"
 #include "conference-event-p.h"
-
 #include "conference-participant-event.h"
 
 // =============================================================================
@@ -29,42 +28,41 @@ LINPHONE_BEGIN_NAMESPACE
 
 class ConferenceParticipantEventPrivate : public ConferenceEventPrivate {
 public:
-	shared_ptr<const Address> participantAddress;
+	Address participantAddress;
 };
 
 // -----------------------------------------------------------------------------
 
 ConferenceParticipantEvent::ConferenceParticipantEvent (
 	Type type,
-	const shared_ptr<const Address> &conferenceAddress,
-	const shared_ptr<const Address> &participantAddress
+	const Address &conferenceAddress,
+	const Address &participantAddress
 ) : ConferenceEvent(*new ConferenceParticipantEventPrivate, type, conferenceAddress) {
-	L_D(ConferenceParticipantEvent);
+	L_D();
 	L_ASSERT(
-		type == TypeConferenceParticipantAdded ||
-		type == TypeConferenceParticipantRemoved ||
-		type == TypeConferenceParticipantSetAdmin ||
-		type == TypeConferenceParticipantUnsetAdmin
+		type == Type::ConferenceParticipantAdded ||
+		type == Type::ConferenceParticipantRemoved ||
+		type == Type::ConferenceParticipantSetAdmin ||
+		type == Type::ConferenceParticipantUnsetAdmin
 	);
-	L_ASSERT(participantAddress);
-	d->participantAddress = make_shared<Address>(*participantAddress);
+	d->participantAddress = participantAddress;
 }
 
 ConferenceParticipantEvent::ConferenceParticipantEvent (const ConferenceParticipantEvent &src) :
 	ConferenceParticipantEvent(src.getType(), src.getAddress(), src.getParticipantAddress()) {}
 
 ConferenceParticipantEvent &ConferenceParticipantEvent::operator= (const ConferenceParticipantEvent &src) {
-	L_D(ConferenceParticipantEvent);
+	L_D();
 	if (this != &src) {
 		ConferenceEvent::operator=(src);
-		d->participantAddress = make_shared<Address>(*src.getPrivate()->participantAddress);
+		d->participantAddress = src.getPrivate()->participantAddress;
 	}
 
 	return *this;
 }
 
-shared_ptr<const Address> ConferenceParticipantEvent::getParticipantAddress () const {
-	L_D(const ConferenceParticipantEvent);
+const Address &ConferenceParticipantEvent::getParticipantAddress () const {
+	L_D();
 	return d->participantAddress;
 }
 

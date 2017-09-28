@@ -19,7 +19,10 @@
 #ifndef _CONTENT_H_
 #define _CONTENT_H_
 
-#include "object/object.h"
+#include <vector>
+
+#include "content-type.h"
+#include "object/clonable-object.h"
 
 // =============================================================================
 
@@ -27,17 +30,31 @@ LINPHONE_BEGIN_NAMESPACE
 
 class ContentPrivate;
 
-class LINPHONE_PUBLIC Content : public Object {
-	friend class Core;
-
+class LINPHONE_PUBLIC Content : public ClonableObject {
 public:
-	// Nothing for the moment.
+	Content ();
+	Content (const Content &src);
+	Content (Content &&src);
+
+	Content &operator= (const Content &src);
+	Content &operator= (Content &&src);
+
+	const ContentType &getContentType () const;
+	void setContentType (const ContentType &contentType);
+	void setContentType (const std::string &contentType);
+
+	const std::string &getContentDisposition () const;
+	void setContentDisposition (const std::string &contentDisposition);
+
+	const std::vector<char> &getBody () const;
+	std::string getBodyAsString () const;
+	void setBody (const std::vector<char> &body);
+	void setBody (const std::string &body);
+	void setBody (const void *buffer, size_t size);
+	size_t getSize () const;
 
 private:
-	Content (ContentPrivate &p);
-
 	L_DECLARE_PRIVATE(Content);
-	L_DISABLE_COPY(Content);
 };
 
 LINPHONE_END_NAMESPACE

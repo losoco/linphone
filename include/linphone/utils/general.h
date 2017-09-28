@@ -65,16 +65,16 @@ LINPHONE_BEGIN_NAMESPACE
 
 void l_assert (const char *condition, const char *file, int line);
 
-#ifdef DEBUG
+#ifndef DEBUG
 	#define L_ASSERT(CONDITION) static_cast<void>(false && (CONDITION))
 #else
-	#define L_ASSERT(CONDITION) ((CONDITION) ? static_cast<void>(0) : l_assert(#CONDITION, __FILE__, __LINE__))
+	#define L_ASSERT(CONDITION) ((CONDITION) ? static_cast<void>(0) : LINPHONE_NAMESPACE::l_assert(#CONDITION, __FILE__, __LINE__))
 #endif
 
 // Allows access to private internal data.
 // Gives a control to C Wrapper.
 #define L_DECLARE_PRIVATE(CLASS) \
-	inline CLASS ## Private * getPrivate() { \
+	inline CLASS ## Private *getPrivate() { \
 		return reinterpret_cast<CLASS ## Private *>(mPrivate); \
 	} \
 	inline const CLASS ## Private *getPrivate() const { \
@@ -125,8 +125,8 @@ inline const Object *getPublicHelper (const T *object, const ObjectPrivate *) {
 	CLASS(const CLASS &) = delete; \
 	CLASS &operator= (const CLASS &) = delete;
 
-#define L_D(CLASS) CLASS ## Private * const d = getPrivate();
-#define L_Q(CLASS) CLASS * const q = getPublic();
+#define L_D() decltype(std::declval<decltype(*this)>().getPrivate()) const d = getPrivate();
+#define L_Q() decltype(std::declval<decltype(*this)>().getPublic()) const q = getPublic();
 
 #define L_USE_DEFAULT_SHARE_IMPL(CLASS, PARENT_CLASS) \
 	CLASS::CLASS (const CLASS &src) : PARENT_CLASS(*src.getPrivate()) {} \
@@ -135,6 +135,13 @@ inline const Object *getPublicHelper (const T *object, const ObjectPrivate *) {
 			setRef(*src.getPrivate()); \
 		return *this; \
 	}
+
+// -----------------------------------------------------------------------------
+// Wrapper public.
+// -----------------------------------------------------------------------------
+
+#define L_DECL_C_STRUCT(STRUCT) typedef struct _ ## STRUCT STRUCT;
+#define L_DECL_C_STRUCT_PREFIX_LESS(STRUCT) typedef struct STRUCT STRUCT;
 
 #endif
 

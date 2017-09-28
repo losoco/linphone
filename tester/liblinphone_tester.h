@@ -44,6 +44,8 @@ extern test_suite_t account_creator_test_suite;
 extern test_suite_t call_test_suite;
 extern test_suite_t call_video_test_suite;
 extern test_suite_t clonable_object_test_suite;
+extern test_suite_t conference_event_test_suite;
+extern test_suite_t conference_test_suite;
 extern test_suite_t cpim_test_suite;
 extern test_suite_t dtmf_test_suite;
 extern test_suite_t event_test_suite;
@@ -57,6 +59,7 @@ extern test_suite_t offeranswer_test_suite;
 extern test_suite_t player_test_suite;
 extern test_suite_t presence_server_test_suite;
 extern test_suite_t presence_test_suite;
+extern test_suite_t property_container_test_suite;
 extern test_suite_t proxy_config_test_suite;
 extern test_suite_t quality_reporting_test_suite;
 extern test_suite_t register_test_suite;
@@ -410,7 +413,7 @@ LinphoneAddress * linphone_core_manager_resolve(LinphoneCoreManager *mgr, const 
 FILE *sip_start(const char *senario, const char* dest_username, const char *passwd, LinphoneAddress* dest_addres);
 
 void early_media_without_sdp_in_200_base( bool_t use_video, bool_t use_ice );
-
+void linphone_conf_event_notify(LinphoneEvent *lev);
 
 #ifdef __cplusplus
 };

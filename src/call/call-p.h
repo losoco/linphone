@@ -19,63 +19,68 @@
 #ifndef _CALL_P_H_
 #define _CALL_P_H_
 
-#include <memory>
-
-#include "object/object-p.h"
-
 #include "call.h"
 #include "conference/conference.h"
+#include "object/object-p.h"
 
 #include "private.h"
 
 // =============================================================================
 
-extern std::shared_ptr<LinphonePrivate::Call> linphone_call_get_cpp_obj(const LinphoneCall *call);
-
-// =============================================================================
-
 LINPHONE_BEGIN_NAMESPACE
 
-class CallPrivate : public ObjectPrivate, CallListener {
+class CallPrivate :
+	public ObjectPrivate,
+	CallListener {
 public:
-	CallPrivate (LinphoneCall *call, LinphoneCore *core, LinphoneCallDir direction, const Address &from, const Address &to,
-		LinphoneProxyConfig *cfg, SalOp *op, const std::shared_ptr<MediaSessionParams> msp);
+	CallPrivate (
+		LinphoneCall *call,
+		LinphoneCore *core,
+		LinphoneCallDir direction,
+		const Address &from,
+		const Address &to,
+		LinphoneProxyConfig *cfg,
+		SalOp *op,
+		const MediaSessionParams *msp
+	);
 	virtual ~CallPrivate ();
 
 	void initiateIncoming ();
 	bool initiateOutgoing ();
 	void iterate (time_t currentRealTime, bool oneSecondElapsed);
 	void startIncomingNotification ();
-	int startInvite (const Address *destination); /* If destination is nullptr, it is taken from the call log */
+
+	int startInvite (const Address *destination);
 
 	std::shared_ptr<CallSession> getActiveSession () const;
 	bool getAudioMuted () const;
-	Conference * getConference () const { return conference; }
-	LinphoneProxyConfig * getDestProxy () const;
-	IceSession * getIceSession () const;
-	MediaStream * getMediaStream (LinphoneStreamType type) const;
-	SalCall * getOp () const;
+	Conference *getConference () const {
+		return conference;
+	}
+
+	LinphoneProxyConfig *getDestProxy () const;
+	IceSession *getIceSession () const;
+	MediaStream *getMediaStream (LinphoneStreamType type) const;
+	SalCall *getOp () const;
 	void setAudioMuted (bool value);
 
-	void ackBeingSent (LinphoneHeaders *headers);
-	void ackReceived (LinphoneHeaders *headers);
-	void callSetReleased ();
-	void callSetTerminated ();
-	void callStateChanged (LinphoneCallState state, const std::string &message);
-	void incomingCallStarted ();
-	void incomingCallToBeAdded ();
-
-	void encryptionChanged (bool activated, const std::string &authToken);
-
-	void statsUpdated (const LinphoneCallStats *stats);
-
-	void resetCurrentCall ();
-	void setCurrentCall ();
-
-	void firstVideoFrameDecoded ();
-	void resetFirstVideoFrameDecoded ();
-
 private:
+	/* CallListener */
+	void onAckBeingSent (LinphoneHeaders *headers) override;
+	void onAckReceived (LinphoneHeaders *headers) override;
+	void onCallSetReleased () override;
+	void onCallSetTerminated () override;
+	void onCallStateChanged (LinphoneCallState state, const std::string &message) override;
+	void onCheckForAcceptation () override;
+	void onIncomingCallStarted () override;
+	void onIncomingCallToBeAdded () override;
+	void onEncryptionChanged (bool activated, const std::string &authToken) override;
+	void onStatsUpdated (const LinphoneCallStats *stats) override;
+	void onResetCurrentCall () override;
+	void onSetCurrentCall () override;
+	void onFirstVideoFrameDecoded () override;
+	void onResetFirstVideoFrameDecoded () override;
+
 	LinphoneCall *lcall = nullptr;
 
 	LinphoneCore *core = nullptr;

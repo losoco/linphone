@@ -24,7 +24,6 @@
 
 #define MAX_LEN 16384
 
-#include "private.h"
 #include "bctoolbox/vfs.h"
 #include "belle-sip/object.h"
 #include "xml2lpc.h"
@@ -60,6 +59,8 @@
 
 #include "linphone/lpconfig.h"
 #include "lpc2xml.h"
+
+#include "c-wrapper/c-wrapper.h"
 
 typedef struct _LpItem{
 	char *key;
@@ -832,11 +833,11 @@ void linphone_config_set_skip_flag_for_section(LpConfig *lpconfig, const char *s
 void lp_item_write(LpItem *item, LpConfig *lpconfig){
 	int ret =-1 ;
 	if (item->is_comment){
-		ret =bctbx_file_fprintf(lpconfig->pFile, 0, "%s\n",item->value);
+		ret = (int)bctbx_file_fprintf(lpconfig->pFile, 0, "%s\n",item->value);
 
 	}
 	else if (item->value && item->value[0] != '\0' ){
-		ret =bctbx_file_fprintf(lpconfig->pFile, 0, "%s=%s\n",item->key,item->value);
+		ret = (int)bctbx_file_fprintf(lpconfig->pFile, 0, "%s=%s\n",item->key,item->value);
 	}
 
 	else {

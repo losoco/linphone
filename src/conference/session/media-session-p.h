@@ -19,7 +19,6 @@
 #ifndef _MEDIA_SESSION_P_H_
 #define _MEDIA_SESSION_P_H_
 
-#include <string>
 #include <utility>
 
 #include "call-session-p.h"
@@ -30,10 +29,6 @@
 #include "nat/stun-client.h"
 
 #include "linphone/call_stats.h"
-#include "sal/sal.h"
-#include "sal/sal.hh"
-
-#include "private.h"
 
 // =============================================================================
 
@@ -41,21 +36,21 @@ LINPHONE_BEGIN_NAMESPACE
 
 class MediaSessionPrivate : public CallSessionPrivate {
 public:
-	MediaSessionPrivate (const Conference &conference, const std::shared_ptr<CallSessionParams> params, CallSessionListener *listener);
+	MediaSessionPrivate (const Conference &conference, const CallSessionParams *params, CallSessionListener *listener);
 	virtual ~MediaSessionPrivate ();
 
 public:
 	static void stunAuthRequestedCb (void *userData, const char *realm, const char *nonce, const char **username, const char **password, const char **ha1);
 
-	void accepted ();
-	void ackReceived (LinphoneHeaders *headers);
-	bool failure ();
+	void accepted () override;
+	void ackReceived (LinphoneHeaders *headers) override;
+	bool failure () override;
 	void pausedByRemote ();
-	void remoteRinging ();
+	void remoteRinging () override;
 	void resumed ();
-	void terminated ();
+	void terminated () override;
 	void updated (bool isUpdate);
-	void updating (bool isUpdate);
+	void updating (bool isUpdate) override;
 
 	void enableSymmetricRtp (bool value);
 	void sendVfu ();
@@ -65,16 +60,34 @@ public:
 	void prepareStreamsForIceGathering (bool hasVideo);
 	void stopStreamsForIceGathering ();
 
-	int getAf () const { return af; }
-	bool getAudioMuted () const { return audioMuted; }
-	LinphoneCore * getCore () const { return core; }
-	IceSession * getIceSession () const { return iceAgent->getIceSession(); }
-	SalMediaDescription * getLocalDesc () const { return localDesc; }
-	MediaStream * getMediaStream (LinphoneStreamType type) const;
-	LinphoneNatPolicy * getNatPolicy () const { return natPolicy; }
+	int getAf () const {
+		return af;
+	}
+
+	bool getAudioMuted () const {
+		return audioMuted;
+	}
+
+	LinphoneCore *getCore () const {
+		return core;
+	}
+
+	IceSession *getIceSession () const {
+		return iceAgent->getIceSession();
+	}
+
+	SalMediaDescription *getLocalDesc () const {
+		return localDesc;
+	}
+
+	MediaStream *getMediaStream (LinphoneStreamType type) const;
+	LinphoneNatPolicy *getNatPolicy () const {
+		return natPolicy;
+	}
+
 	int getRtcpPort (LinphoneStreamType type) const;
 	int getRtpPort (LinphoneStreamType type) const;
-	LinphoneCallStats * getStats (LinphoneStreamType type) const;
+	LinphoneCallStats *getStats (LinphoneStreamType type) const;
 	int getStreamIndex (LinphoneStreamType type) const;
 	int getStreamIndex (MediaStream *ms) const;
 	SalCall * getOp () const { return op; }
@@ -83,21 +96,21 @@ public:
 private:
 	static OrtpJitterBufferAlgorithm jitterBufferNameToAlgo (const std::string &name);
 
-#ifdef VIDEO_ENABLED
-	static void videoStreamEventCb (void *userData, const MSFilter *f, const unsigned int eventId, const void *args);
-#endif
-#ifdef TEST_EXT_RENDERER
-	static void extRendererCb (void *userData, const MSPicture *local, const MSPicture *remote);
-#endif
+	#ifdef VIDEO_ENABLED
+		static void videoStreamEventCb (void *userData, const MSFilter *f, const unsigned int eventId, const void *args);
+	#endif // ifdef VIDEO_ENABLED
+	#ifdef TEST_EXT_RENDERER
+		static void extRendererCb (void *userData, const MSPicture *local, const MSPicture *remote);
+	#endif // ifdef TEST_EXT_RENDERER
 	static void realTimeTextCharacterReceived (void *userData, MSFilter *f, unsigned int id, void *arg);
 
 	static float aggregateQualityRatings (float audioRating, float videoRating);
 
-	void setState (LinphoneCallState newState, const std::string &message);
+	void setState (LinphoneCallState newState, const std::string &message) override;
 
 	void computeStreamsIndexes (const SalMediaDescription *md);
 	void fixCallParams (SalMediaDescription *rmd);
-	void initializeParamsAccordingToIncomingCallParams ();
+	void initializeParamsAccordingToIncomingCallParams () override;
 	void setCompatibleIncomingCallParams (SalMediaDescription *md);
 	void updateBiggestDesc (SalMediaDescription *md);
 	void updateRemoteSessionIdAndVer ();
@@ -105,9 +118,9 @@ private:
 	void initStats (LinphoneCallStats *stats, LinphoneStreamType type);
 	void notifyStatsUpdated (int streamIndex) const;
 
-	OrtpEvQueue * getEventQueue (int streamIndex) const;
-	MediaStream * getMediaStream (int streamIndex) const;
-	MSWebCam * getVideoDevice () const;
+	OrtpEvQueue *getEventQueue (int streamIndex) const;
+	MediaStream *getMediaStream (int streamIndex) const;
+	MSWebCam *getVideoDevice () const;
 
 	void fillMulticastMediaAddresses ();
 	int selectFixedPort (int streamIndex, std::pair<int, int> portRange);
@@ -151,7 +164,7 @@ private:
 
 	int getIdealAudioBandwidth (const SalMediaDescription *md, const SalStreamDescription *desc);
 	int getVideoBandwidth (const SalMediaDescription *md, const SalStreamDescription *desc);
-	RtpProfile * makeProfile (const SalMediaDescription *md, const SalStreamDescription *desc, int *usedPt);
+	RtpProfile *makeProfile (const SalMediaDescription *md, const SalStreamDescription *desc, int *usedPt);
 	void unsetRtpProfile (int streamIndex);
 	void updateAllocatedAudioBandwidth (const PayloadType *pt, int maxbw);
 
@@ -161,8 +174,8 @@ private:
 	void configureAdaptiveRateControl (MediaStream *ms, const OrtpPayloadType *pt, bool videoWillBeUsed);
 	void configureRtpSessionForRtcpFb (const SalStreamDescription *stream);
 	void configureRtpSessionForRtcpXr (SalStreamType type);
-	RtpSession * createAudioRtpIoSession ();
-	RtpSession * createVideoRtpIoSession ();
+	RtpSession *createAudioRtpIoSession ();
+	RtpSession *createVideoRtpIoSession ();
 	void freeResources ();
 	void handleIceEvents (OrtpEvent *ev);
 	void handleStreamEvents (int streamIndex);
@@ -195,7 +208,7 @@ private:
 	void audioStreamAuthTokenReady (const std::string &authToken, bool verified);
 	void audioStreamEncryptionChanged (bool encrypted);
 	uint16_t getAvpfRrInterval () const;
-	int getNbActiveStreams () const;
+	unsigned int getNbActiveStreams () const;
 	bool isEncryptionMandatory () const;
 	int mediaParametersChanged (SalMediaDescription *oldMd, SalMediaDescription *newMd);
 	void propagateEncryptionChanged ();
@@ -213,22 +226,22 @@ private:
 	void reportBandwidth ();
 	void reportBandwidthForStream (MediaStream *ms, LinphoneStreamType type);
 
-	void abort (const std::string &errorMsg);
-	void handleIncomingReceivedStateInIncomingNotification ();
-	bool isReadyForInvite () const;
+	void abort (const std::string &errorMsg) override;
+	void handleIncomingReceivedStateInIncomingNotification () override;
+	bool isReadyForInvite () const override;
 	LinphoneStatus pause ();
-	void setTerminated ();
-	LinphoneStatus startAcceptUpdate (LinphoneCallState nextState, const std::string &stateInfo);
-	LinphoneStatus startUpdate ();
-	void terminate ();
-	void updateCurrentParams ();
+	void setTerminated () override;
+	LinphoneStatus startAcceptUpdate (LinphoneCallState nextState, const std::string &stateInfo) override;
+	LinphoneStatus startUpdate () override;
+	void terminate () override;
+	void updateCurrentParams () const override;
 
-	void accept (const std::shared_ptr<MediaSessionParams> params);
-	LinphoneStatus acceptUpdate (const std::shared_ptr<CallSessionParams> csp, LinphoneCallState nextState, const std::string &stateInfo);
+	void accept (const MediaSessionParams *params);
+	LinphoneStatus acceptUpdate (const CallSessionParams *csp, LinphoneCallState nextState, const std::string &stateInfo) override;
 
-#ifdef VIDEO_ENABLED
-	void videoStreamEventCb (const MSFilter *f, const unsigned int eventId, const void *args);
-#endif
+	#ifdef VIDEO_ENABLED
+		void videoStreamEventCb (const MSFilter *f, const unsigned int eventId, const void *args);
+	#endif // ifdef VIDEO_ENABLED
 	void realTimeTextCharacterReceived (MSFilter *f, unsigned int id, void *arg);
 
 	void stunAuthRequestedCb (const char *realm, const char *nonce, const char **username, const char **password, const char **ha1);
@@ -237,9 +250,9 @@ private:
 	static const std::string ecStateStore;
 	static const int ecStateMaxLen;
 
-	std::shared_ptr<MediaSessionParams> params = nullptr;
-	std::shared_ptr<MediaSessionParams> currentParams = nullptr;
-	std::shared_ptr<MediaSessionParams> remoteParams = nullptr;
+	MediaSessionParams *params = nullptr;
+	mutable MediaSessionParams *currentParams = nullptr;
+	MediaSessionParams *remoteParams = nullptr;
 
 	AudioStream *audioStream = nullptr;
 	OrtpEvQueue *audioStreamEvQueue = nullptr;
@@ -263,14 +276,20 @@ private:
 	RtpProfile *textProfile = nullptr;
 	int mainTextStreamIndex = LINPHONE_CALL_STATS_TEXT;
 
+	LinphoneNatPolicy *natPolicy = nullptr;
 	StunClient *stunClient = nullptr;
 	IceAgent *iceAgent = nullptr;
 
-	int af; /* The address family to prefer for RTP path, guessed from signaling path */
+	// The address family to prefer for RTP path, guessed from signaling path.
+	int af;
+
 	std::string mediaLocalIp;
 	PortConfig mediaPorts[SAL_MEDIA_DESCRIPTION_MAX_STREAMS];
 	bool needMediaLocalIpRefresh = false;
-	MSMediaStreamSessions sessions[SAL_MEDIA_DESCRIPTION_MAX_STREAMS]; /* The rtp, srtp, zrtp contexts for each stream */
+
+	// The rtp, srtp, zrtp contexts for each stream.
+	MSMediaStreamSessions sessions[SAL_MEDIA_DESCRIPTION_MAX_STREAMS];
+
 	SalMediaDescription *localDesc = nullptr;
 	int localDescChanged = 0;
 	SalMediaDescription *biggestDesc = nullptr;
@@ -284,8 +303,12 @@ private:
 	std::string dtlsCertificateFingerprint;
 
 	unsigned int nbMediaStarts = 0;
-	int upBandwidth = 0; /* Upload bandwidth setting at the time the call is started. Used to detect if it changes during a call */
-	int audioBandwidth = 0; /* Upload bandwidth used by audio */
+
+	// Upload bandwidth setting at the time the call is started. Used to detect if it changes during a call.
+	int upBandwidth = 0;
+
+	// Upload bandwidth used by audio.
+	int audioBandwidth = 0;
 
 	bool allMuted = false;
 	bool audioMuted = false;

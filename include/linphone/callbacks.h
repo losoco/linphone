@@ -22,117 +22,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 #include "linphone/types.h"
+#include "linphone/api/c-callbacks.h"
 
 
 /**
  * @addtogroup chatroom
  * @{
  */
-
-/**
- * Call back used to notify message delivery status
- * @param msg #LinphoneChatMessage object
- * @param status LinphoneChatMessageState
- * @param ud application user data
- * @deprecated Use LinphoneChatMessageCbsMsgStateChangedCb instead.
- * @donotwrap
- */
-typedef void (*LinphoneChatMessageStateChangedCb)(LinphoneChatMessage* msg,LinphoneChatMessageState state,void* ud);
-
-/**
- * Call back used to notify message delivery status
- * @param msg #LinphoneChatMessage object
- * @param status LinphoneChatMessageState
- */
-typedef void (*LinphoneChatMessageCbsMsgStateChangedCb)(LinphoneChatMessage* msg, LinphoneChatMessageState state);
-
-/**
- * File transfer receive callback prototype. This function is called by the core upon an incoming File transfer is started. This function may be call several time for the same file in case of large file.
- * @param message #LinphoneChatMessage message from which the body is received.
- * @param content #LinphoneContent incoming content information
- * @param buffer #LinphoneBuffer holding the received data. Empty buffer means end of file.
- */
-typedef void (*LinphoneChatMessageCbsFileTransferRecvCb)(LinphoneChatMessage *message, const LinphoneContent* content, const LinphoneBuffer *buffer);
-
-/**
- * File transfer send callback prototype. This function is called by the core when an outgoing file transfer is started. This function is called until size is set to 0.
- * @param message #LinphoneChatMessage message from which the body is received.
- * @param content #LinphoneContent outgoing content
- * @param offset the offset in the file from where to get the data to be sent
- * @param size the number of bytes expected by the framework
- * @return A LinphoneBuffer object holding the data written by the application. An empty buffer means end of file.
- */
-typedef LinphoneBuffer * (*LinphoneChatMessageCbsFileTransferSendCb)(LinphoneChatMessage *message,  const LinphoneContent* content, size_t offset, size_t size);
-
-/**
- * File transfer progress indication callback prototype.
- * @param message #LinphoneChatMessage message from which the body is received.
- * @param content #LinphoneContent incoming content information
- * @param offset The number of bytes sent/received since the beginning of the transfer.
- * @param total The total number of bytes to be sent/received.
- */
-typedef void (*LinphoneChatMessageCbsFileTransferProgressIndicationCb)(LinphoneChatMessage *message, const LinphoneContent* content, size_t offset, size_t total);
-
-/**
- * @}
-**/
-
-/**
- * @addtogroup call_control
- * @{
-**/
-
-/**
- * Callback for being notified of received DTMFs.
- * @param call LinphoneCall object that received the dtmf
- * @param dtmf The ascii code of the dtmf
- */
-typedef void (*LinphoneCallCbsDtmfReceivedCb)(LinphoneCall *call, int dtmf);
-
-/**
- * Call encryption changed callback.
- * @param call LinphoneCall object whose encryption is changed.
- * @param on Whether encryption is activated.
- * @param authentication_token An authentication_token, currently set for ZRTP kind of encryption only.
- */
-typedef void (*LinphoneCallCbsEncryptionChangedCb)(LinphoneCall *call, bool_t on, const char *authentication_token);
-
-/**
- * Callback for receiving info messages.
- * @param call LinphoneCall whose info message belongs to.
- * @param msg LinphoneInfoMessage object.
- */
-typedef void (*LinphoneCallCbsInfoMessageReceivedCb)(LinphoneCall *call, const LinphoneInfoMessage *msg);
-
-/**
- * Call state notification callback.
- * @param call LinphoneCall whose state is changed.
- * @param cstate The new state of the call
- * @param message An informational message about the state.
- */
-typedef void (*LinphoneCallCbsStateChangedCb)(LinphoneCall *call, LinphoneCallState cstate, const char *message);
-
-/**
- * Callback for receiving quality statistics for calls.
- * @param call LinphoneCall object whose statistics are notified
- * @param stats LinphoneCallStats object
- */
-typedef void (*LinphoneCallCbsStatsUpdatedCb)(LinphoneCall *call, const LinphoneCallStats *stats);
-
-/**
- * Callback for notifying progresses of transfers.
- * @param call LinphoneCall that was transfered
- * @param cstate The state of the call to transfer target at the far end.
- */
-typedef void (*LinphoneCallCbsTransferStateChangedCb)(LinphoneCall *call, LinphoneCallState cstate);
-
-/**
- * Callback for notifying the processing SIP ACK messages.
- * @param call LinphoneCall for which an ACK is being received or sent
- * @param ack the ACK message
- * @param is_received if TRUE this ACK is an incoming one, otherwise it is an ACK about to be sent.
- */
-typedef void (*LinphoneCallCbsAckProcessingCb)(LinphoneCall *call, LinphoneHeaders *ack, bool_t is_received);
 
 /**
  * @}
@@ -501,6 +397,13 @@ typedef LinphoneCoreCbsFriendListRemovedCb LinphoneCoreFriendListRemovedCb;
  * @param[in] url The url where to download the new version if the result is LinphoneVersionUpdateCheckNewVersionAvailable
  */
 typedef void (*LinphoneCoreCbsVersionUpdateCheckResultReceivedCb) (LinphoneCore *lc, LinphoneVersionUpdateCheckResult result, const char *version, const char *url);
+
+/**
+ * Callback prototype telling that a LinphoneChatRoom object has been instantiated. This is useful to set the callbacks on the LinphoneChatRoom object.
+ * @param[in] lc LinphoneCore object
+ * @param[in] cr The LinphoneChatRoom object that has been instantiated
+ */
+typedef void (*LinphoneCoreCbsChatRoomInstantiatedCb) (LinphoneCore *lc, LinphoneChatRoom *cr);
 
 /**
  * @}

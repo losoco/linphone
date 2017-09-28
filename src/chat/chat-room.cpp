@@ -18,13 +18,16 @@
 
 #include <algorithm>
 
+#include "linphone/api/c-chat-message.h"
 #include "linphone/utils/utils.h"
 
+#include "c-wrapper/c-wrapper.h"
 #include "chat-room-p.h"
+#include "content/content-type.h"
 #include "imdn.h"
 #include "logger/logger.h"
-#include "utils/content-type.h"
 
+#include "chat-message.h"
 #include "chat-room.h"
 #include "sal/message_op.hh"
 
@@ -38,24 +41,10 @@ ChatRoomPrivate::ChatRoomPrivate (LinphoneCore *core)
 	: core(core), isComposingHandler(core, this) {}
 
 ChatRoomPrivate::~ChatRoomPrivate () {
-	for (auto it = transientMessages.begin(); it != transientMessages.end(); it++) {
-		linphone_chat_message_release(*it);
-	}
-	if (!receivedRttCharacters.empty()) {
-		for (auto it = receivedRttCharacters.begin(); it != receivedRttCharacters.end(); it++)
-			bctbx_free(*it);
-	}
-	if (core) {
-		if (bctbx_list_find(core->chatrooms, cBackPointer)) {
-			lError() << "LinphoneChatRoom[" << cBackPointer << "] is destroyed while still being used by the LinphoneCore. " <<
-				"This is abnormal. linphone_core_get_chat_room() doesn't give a reference, there is no need to call linphone_chat_room_unref(). " <<
-				"In order to remove a chat room from the core, use linphone_core_delete_chat_room().";
-			core->chatrooms = bctbx_list_remove(core->chatrooms, cBackPointer);
-		}
-	}
-	linphone_address_unref(peerAddress);
+	for (auto &message : transientMessages)
+		linphone_chat_message_release(message);
 	if (pendingMessage)
-		linphone_chat_message_destroy(pendingMessage);
+		linphone_chat_message_unref(pendingMessage);
 }
 
 // -----------------------------------------------------------------------------
@@ -106,22 +95,24 @@ void ChatRoomPrivate::removeTransientMessage (LinphoneChatMessage *msg) {
 // -----------------------------------------------------------------------------
 
 void ChatRoomPrivate::release () {
+	L_Q();
 	isComposingHandler.stopTimers();
-	for (auto it = weakMessages.begin(); it != weakMessages.end(); it++) {
-		linphone_chat_message_deactivate(*it);
-	}
-	for (auto it = transientMessages.begin(); it != transientMessages.end(); it++) {
-		linphone_chat_message_deactivate(*it);
-	}
+
+	for (auto &message : weakMessages)
+		linphone_chat_message_deactivate(message);
+	for (auto &message : transientMessages)
+		linphone_chat_message_deactivate(message);
+
 	core = nullptr;
-	linphone_chat_room_unref(cBackPointer);
+	linphone_chat_room_unref(L_GET_C_BACK_PTR(q));
 }
 
 void ChatRoomPrivate::sendImdn (const string &content, LinphoneReason reason) {
-	L_Q(ChatRoom);
+	L_Q();
 
 	const char *identity = nullptr;
-	LinphoneProxyConfig *proxy = linphone_core_lookup_known_proxy(core, peerAddress);
+	LinphoneAddress *peer = linphone_address_new(peerAddress.asString().c_str());
+	LinphoneProxyConfig *proxy = linphone_core_lookup_known_proxy(core, peer);
 	if (proxy)
 		identity = linphone_address_as_string(linphone_proxy_config_get_identity_address(proxy));
 	else
@@ -129,11 +120,11 @@ void ChatRoomPrivate::sendImdn (const string &content, LinphoneReason reason) {
 
 	/* Sending out of call */
 	MessageOp *op = new MessageOp(core->sal);
-	linphone_configure_op(core, op, peerAddress, nullptr, lp_config_get_int(core->config, "sip", "chat_msg_with_contact", 0));
+	linphone_configure_op(core, op, peer, nullptr, !!lp_config_get_int(core->config, "sip", "chat_msg_with_contact", 0));
 	LinphoneChatMessage *msg = q->createMessage(content);
 	LinphoneAddress *fromAddr = linphone_address_new(identity);
 	linphone_chat_message_set_from_address(msg, fromAddr);
-	LinphoneAddress *toAddr = linphone_address_new(peer.c_str());
+	LinphoneAddress *toAddr = linphone_address_new(peerAddress.asString().c_str());
 	linphone_chat_message_set_to_address(msg, toAddr);
 	linphone_chat_message_set_content_type(msg, "message/imdn+xml");
 
@@ -144,17 +135,18 @@ void ChatRoomPrivate::sendImdn (const string &content, LinphoneReason reason) {
 		LinphoneImEncryptionEngineCbs *imeeCbs = linphone_im_encryption_engine_get_callbacks(imee);
 		LinphoneImEncryptionEngineCbsOutgoingMessageCb cbProcessOutgoingMessage = linphone_im_encryption_engine_cbs_get_process_outgoing_message(imeeCbs);
 		if (cbProcessOutgoingMessage) {
-			retval = cbProcessOutgoingMessage(imee, cBackPointer, msg);
+			retval = cbProcessOutgoingMessage(imee, L_GET_C_BACK_PTR(q), msg);
 		}
 	}
 
 	if (retval <= 0) {
-		op->send_message(identity, peer.c_str(), msg->content_type, msg->message, nullptr);
+		op->send_message(identity, peerAddress.asString().c_str(), linphone_chat_message_get_content_type(msg), linphone_chat_message_get_text(msg), nullptr);
 	}
 
 	linphone_chat_message_unref(msg);
 	linphone_address_unref(fromAddr);
 	linphone_address_unref(toAddr);
+	linphone_address_unref(peer);
 	op->unref();
 }
 
@@ -166,11 +158,11 @@ int ChatRoomPrivate::getMessagesCount (bool unreadOnly) {
 	/* Optimization: do not read database if the count is already available in memory */
 	if (unreadOnly && unreadCount >= 0) return unreadCount;
 
-	char *peer = linphone_address_as_string_uri_only(peerAddress);
+	string peer = peerAddress.asStringUriOnly();
 	char *option = nullptr;
 	if (unreadOnly)
 		option = bctbx_strdup_printf("AND status!=%i AND direction=%i", LinphoneChatMessageStateDisplayed, LinphoneChatMessageIncoming);
-	char *buf = sqlite3_mprintf("SELECT count(*) FROM history WHERE remoteContact = %Q %s;", peer, unreadOnly ? option : "");
+	char *buf = sqlite3_mprintf("SELECT count(*) FROM history WHERE remoteContact = %Q %s;", peer.c_str(), unreadOnly ? option : "");
 	sqlite3_stmt *selectStatement;
 	int numrows = 0;
 	int returnValue = sqlite3_prepare_v2(core->db, buf, -1, &selectStatement, nullptr);
@@ -181,7 +173,6 @@ int ChatRoomPrivate::getMessagesCount (bool unreadOnly) {
 	}
 	sqlite3_finalize(selectStatement);
 	sqlite3_free(buf);
-	ms_free(peer);
 
 	/* No need to test the sign of unreadCount here because it has been tested above */
 	if (unreadOnly) {
@@ -191,13 +182,24 @@ int ChatRoomPrivate::getMessagesCount (bool unreadOnly) {
 	return numrows;
 }
 
+void ChatRoomPrivate::setState (ChatRoom::State newState) {
+	L_Q();
+	if (newState != state) {
+		state = newState;
+		if (state == ChatRoom::State::Instantiated)
+			linphone_core_notify_chat_room_instantiated(core, L_GET_C_BACK_PTR(q));
+		notifyStateChanged();
+	}
+}
+
 // -----------------------------------------------------------------------------
 
 void ChatRoomPrivate::sendIsComposingNotification () {
-	L_Q(ChatRoom);
+	L_Q();
 	LinphoneImNotifPolicy *policy = linphone_core_get_im_notif_policy(core);
 	if (linphone_im_notif_policy_get_send_is_composing(policy)) {
-		LinphoneProxyConfig *proxy = linphone_core_lookup_known_proxy(core, peerAddress);
+		LinphoneAddress *peer = linphone_address_new(peerAddress.asString().c_str());
+		LinphoneProxyConfig *proxy = linphone_core_lookup_known_proxy(core, peer);
 		const char *identity = nullptr;
 
 		if (proxy)
@@ -207,14 +209,14 @@ void ChatRoomPrivate::sendIsComposingNotification () {
 
 		/* Sending out of call */
 		MessageOp *op = new MessageOp(core->sal);
-		linphone_configure_op(core, op, peerAddress, nullptr, lp_config_get_int(core->config, "sip", "chat_msg_with_contact", 0));
+		linphone_configure_op(core, op, peer, nullptr, !!lp_config_get_int(core->config, "sip", "chat_msg_with_contact", 0));
 		string content = isComposingHandler.marshal(isComposing);
 		if (!content.empty()) {
 			int retval = -1;
 			LinphoneAddress *fromAddr = linphone_address_new(identity);
 			LinphoneChatMessage *msg = q->createMessage(content);
 			linphone_chat_message_set_from_address(msg, fromAddr);
-			linphone_chat_message_set_to_address(msg, peerAddress);
+			linphone_chat_message_set_to_address(msg, peer);
 			linphone_chat_message_set_content_type(msg, "application/im-iscomposing+xml");
 
 			LinphoneImEncryptionEngine *imee = linphone_core_get_im_encryption_engine(core);
@@ -222,18 +224,19 @@ void ChatRoomPrivate::sendIsComposingNotification () {
 				LinphoneImEncryptionEngineCbs *imeeCbs = linphone_im_encryption_engine_get_callbacks(imee);
 				LinphoneImEncryptionEngineCbsOutgoingMessageCb cbProcessOutgoingMessage = linphone_im_encryption_engine_cbs_get_process_outgoing_message(imeeCbs);
 				if (cbProcessOutgoingMessage) {
-					retval = cbProcessOutgoingMessage(imee, cBackPointer, msg);
+					retval = cbProcessOutgoingMessage(imee, L_GET_C_BACK_PTR(q), msg);
 				}
 			}
 
 			if (retval <= 0) {
-				op->send_message(identity, peer.c_str(), msg->content_type, msg->message, nullptr);
+				op->send_message(identity, peerAddress.asString().c_str(), linphone_chat_message_get_content_type(msg), linphone_chat_message_get_text(msg), nullptr);
 			}
 
 			linphone_chat_message_unref(msg);
 			linphone_address_unref(fromAddr);
 			op->unref();
 		}
+		linphone_address_unref(peer);
 	}
 }
 
@@ -259,7 +262,7 @@ void ChatRoomPrivate::sendIsComposingNotification () {
  * | 14 | secured flag
  */
 int ChatRoomPrivate::createChatMessageFromDb (int argc, char **argv, char **colName) {
-	L_Q(ChatRoom);
+	L_Q();
 	unsigned int storageId = (unsigned int)atoi(argv[0]);
 
 	/* Check if the message exists in the weak messages list, in which case we should return that one. */
@@ -271,25 +274,26 @@ int ChatRoomPrivate::createChatMessageFromDb (int argc, char **argv, char **colN
 	if (!newMessage) {
 		newMessage = q->createMessage(argv[4] ? argv[4] : "");
 
+		LinphoneAddress *peer = linphone_address_new(peerAddress.asString().c_str());
 		if (atoi(argv[3]) == LinphoneChatMessageIncoming) {
-			newMessage->dir = LinphoneChatMessageIncoming;
-			linphone_chat_message_set_from(newMessage, peerAddress);
-			newMessage->to = nullptr; /* Will be filled at the end */
+			linphone_chat_message_set_incoming(newMessage);
+			linphone_chat_message_set_from_address(newMessage, peer);
+			linphone_chat_message_set_to_address(newMessage, NULL);
 		} else {
-			newMessage->dir = LinphoneChatMessageOutgoing;
-			newMessage->from = nullptr; /* Will be filled at the end */
-			linphone_chat_message_set_to(newMessage, peerAddress);
+			linphone_chat_message_set_outgoing(newMessage);
+			linphone_chat_message_set_from_address(newMessage, NULL);
+			linphone_chat_message_set_to_address(newMessage, peer);
 		}
+		linphone_address_unref(peer);
 
-		newMessage->time = (time_t)atol(argv[9]);
-		newMessage->is_read = atoi(argv[6]);
-		newMessage->state = static_cast<LinphoneChatMessageState>(atoi(argv[7]));
-		newMessage->storage_id = storageId;
-		newMessage->external_body_url = ms_strdup(argv[8]);
-		newMessage->appdata = ms_strdup(argv[10]);
-		newMessage->message_id = ms_strdup(argv[12]);
+		linphone_chat_message_set_time(newMessage, (time_t)atol(argv[9]));
+		linphone_chat_message_set_state(newMessage, static_cast<LinphoneChatMessageState>(atoi(argv[7])));
+		linphone_chat_message_set_storage_id(newMessage, storageId);
+		linphone_chat_message_set_external_body_url(newMessage, ms_strdup(argv[8]));
+		linphone_chat_message_set_appdata(newMessage, ms_strdup(argv[10]));
+		linphone_chat_message_set_message_id(newMessage, ms_strdup(argv[12]));
 		linphone_chat_message_set_content_type(newMessage, argv[13]);
-		newMessage->is_secured = (bool_t)atoi(argv[14]);
+		linphone_chat_message_set_is_secured(newMessage, (bool_t)atoi(argv[14]));
 
 		if (argv[11]) {
 			int id = atoi(argv[11]);
@@ -298,13 +302,13 @@ int ChatRoomPrivate::createChatMessageFromDb (int argc, char **argv, char **colN
 		}
 
 		/* Fix content type for old messages that were stored without it */
-		if (!newMessage->content_type) {
-			if (newMessage->file_transfer_information) {
-				newMessage->content_type = ms_strdup("application/vnd.gsma.rcs-ft-http+xml");
-			} else if (newMessage->external_body_url) {
-				newMessage->content_type = ms_strdup("message/external-body");
+		if (!linphone_chat_message_get_content_type(newMessage)) {
+			if (linphone_chat_message_get_file_transfer_information(newMessage)) {
+				linphone_chat_message_set_content_type(newMessage, ms_strdup("application/vnd.gsma.rcs-ft-http+xml"));
+			} else if (linphone_chat_message_get_external_body_url(newMessage)) {
+				linphone_chat_message_set_content_type(newMessage, ms_strdup("message/external-body"));
 			} else {
-				newMessage->content_type = ms_strdup("text/plain");
+				linphone_chat_message_set_content_type(newMessage, ms_strdup("text/plain"));
 			}
 		}
 
@@ -322,17 +326,17 @@ void ChatRoomPrivate::onWeakMessageDestroyed (LinphoneChatMessage *messageBeingD
 }
 
 LinphoneChatMessage *ChatRoomPrivate::getTransientMessage (unsigned int storageId) const {
-	for (auto it = transientMessages.begin(); it != transientMessages.end(); it++) {
-		if (linphone_chat_message_get_storage_id(*it) == storageId)
-			return linphone_chat_message_ref(*it);
+	for (auto &message : transientMessages) {
+		if (linphone_chat_message_get_storage_id(message) == storageId)
+			return linphone_chat_message_ref(message);
 	}
 	return nullptr;
 }
 
 LinphoneChatMessage *ChatRoomPrivate::getWeakMessage (unsigned int storageId) const {
-	for (auto it = weakMessages.begin(); it != weakMessages.end(); it++) {
-		if (linphone_chat_message_get_storage_id(*it) == storageId)
-			return linphone_chat_message_ref(*it);
+	for (auto &message : weakMessages) {
+		if (linphone_chat_message_get_storage_id(message) == storageId)
+			return linphone_chat_message_ref(message);
 	}
 	return nullptr;
 }
@@ -359,12 +363,11 @@ void ChatRoomPrivate::sqlRequestMessage (sqlite3 *db, const string &stmt) {
 list<LinphoneChatMessage *> ChatRoomPrivate::findMessages (const string &messageId) {
 	if (!core->db)
 		return list<LinphoneChatMessage *>();
-	char *peer = linphone_address_as_string_uri_only(peerAddress);
-	char *buf = sqlite3_mprintf("SELECT * FROM history WHERE remoteContact = %Q AND messageId = %Q", peer, messageId.c_str());
+	string peer = peerAddress.asStringUriOnly();
+	char *buf = sqlite3_mprintf("SELECT * FROM history WHERE remoteContact = %Q AND messageId = %Q", peer.c_str(), messageId.c_str());
 	messages.clear();
 	sqlRequestMessage(core->db, buf);
 	sqlite3_free(buf);
-	ms_free(peer);
 	list<LinphoneChatMessage *> result = messages;
 	messages.clear();
 	return result;
@@ -374,19 +377,19 @@ list<LinphoneChatMessage *> ChatRoomPrivate::findMessages (const string &message
  * TODO: Should be handled directly by the LinphoneChatMessage object!
  */
 void ChatRoomPrivate::storeOrUpdateMessage (LinphoneChatMessage *msg) {
-	if (msg->storage_id != 0) {
+	if (linphone_chat_message_get_storage_id(msg) != 0) {
 		/* The message has already been stored (probably because of file transfer), update it */
 		linphone_chat_message_store_update(msg);
 	} else {
 		/* Store the new message */
-		msg->storage_id = linphone_chat_message_store(msg);
+		linphone_chat_message_store(msg);
 	}
 }
 
 // -----------------------------------------------------------------------------
 
 LinphoneReason ChatRoomPrivate::messageReceived (SalOp *op, const SalMessage *salMsg) {
-	L_Q(ChatRoom);
+	L_Q();
 
 	bool increaseMsgCount = true;
 	LinphoneReason reason = LinphoneReasonNone;
@@ -402,18 +405,20 @@ LinphoneReason ChatRoomPrivate::messageReceived (SalOp *op, const SalMessage *sa
 
 	msg = q->createMessage(salMsg->text ? salMsg->text : "");
 	linphone_chat_message_set_content_type(msg, salMsg->content_type);
-	linphone_chat_message_set_from(msg, peerAddress);
+	LinphoneAddress *peer = linphone_address_new(peerAddress.asString().c_str());
+	linphone_chat_message_set_from_address(msg, peer);
+	linphone_address_unref(peer);
 
 	LinphoneAddress *to = op->get_to() ? linphone_address_new(op->get_to()) : linphone_address_new(linphone_core_get_identity(core));
-	msg->to = to;
-	msg->time = salMsg->time;
-	msg->state = LinphoneChatMessageStateDelivered;
-	msg->dir = LinphoneChatMessageIncoming;
-	msg->message_id = ms_strdup(op->get_call_id());
+	linphone_chat_message_set_to_address(msg, to);
+	linphone_chat_message_set_time(msg, salMsg->time);
+	linphone_chat_message_set_state(msg, LinphoneChatMessageStateDelivered);
+	linphone_chat_message_set_incoming(msg);
+	linphone_chat_message_set_message_id(msg, ms_strdup(op->get_call_id()));
 
 	const SalCustomHeader *ch = op->get_recv_custom_header();
 	if (ch)
-		msg->custom_headers = sal_custom_header_clone(ch);
+		linphone_chat_message_set_sal_custom_headers(msg, sal_custom_header_clone(ch));
 	if (salMsg->url)
 		linphone_chat_message_set_external_body_url(msg, salMsg->url);
 
@@ -423,12 +428,12 @@ LinphoneReason ChatRoomPrivate::messageReceived (SalOp *op, const SalMessage *sa
 		LinphoneImEncryptionEngineCbs *imeeCbs = linphone_im_encryption_engine_get_callbacks(imee);
 		LinphoneImEncryptionEngineCbsIncomingMessageCb cbProcessIncomingMessage = linphone_im_encryption_engine_cbs_get_process_incoming_message(imeeCbs);
 		if (cbProcessIncomingMessage) {
-			retval = cbProcessIncomingMessage(imee, cBackPointer, msg);
+			retval = cbProcessIncomingMessage(imee, L_GET_C_BACK_PTR(q), msg);
 			if (retval == 0) {
-				msg->is_secured = TRUE;
+				linphone_chat_message_set_is_secured(msg, TRUE);
 			} else if (retval > 0) {
 				/* Unable to decrypt message */
-				linphone_core_notify_message_received_unable_decrypt(core, cBackPointer, msg);
+				notifyUndecryptableMessageReceived(msg);
 				reason = linphone_error_code_to_reason(retval);
 				linphone_chat_message_send_delivery_notification(msg, reason);
 				/* Return LinphoneReasonNone to avoid flexisip resending us a message we can't decrypt */
@@ -438,9 +443,9 @@ LinphoneReason ChatRoomPrivate::messageReceived (SalOp *op, const SalMessage *sa
 		}
 	}
 
-	if ((retval <= 0) && (linphone_core_is_content_type_supported(core, msg->content_type) == FALSE)) {
+	if ((retval <= 0) && (linphone_core_is_content_type_supported(core, linphone_chat_message_get_content_type(msg)) == FALSE)) {
 		retval = 415;
-		lError() << "Unsupported MESSAGE (content-type " << msg->content_type << " not recognized)";
+		lError() << "Unsupported MESSAGE (content-type " << linphone_chat_message_get_content_type(msg) << " not recognized)";
 	}
 
 	if (retval > 0) {
@@ -449,24 +454,24 @@ LinphoneReason ChatRoomPrivate::messageReceived (SalOp *op, const SalMessage *sa
 		goto end;
 	}
 
-	if (ContentType::isFileTransfer(msg->content_type)) {
+	if (ContentType::isFileTransfer(linphone_chat_message_get_content_type(msg))) {
 		create_file_transfer_information_from_vnd_gsma_rcs_ft_http_xml(msg);
 		linphone_chat_message_set_to_be_stored(msg, TRUE);
-	} else if (ContentType::isImIsComposing(msg->content_type)) {
-		isComposingReceived(msg->message);
+	} else if (ContentType::isImIsComposing(linphone_chat_message_get_content_type(msg))) {
+		isComposingReceived(linphone_chat_message_get_text(msg));
 		linphone_chat_message_set_to_be_stored(msg, FALSE);
 		increaseMsgCount = FALSE;
 		if (lp_config_get_int(core->config, "sip", "deliver_imdn", 0) != 1) {
 			goto end;
 		}
-	} else if (ContentType::isImdn(msg->content_type)) {
-		imdnReceived(msg->message);
+	} else if (ContentType::isImdn(linphone_chat_message_get_content_type(msg))) {
+		imdnReceived(linphone_chat_message_get_text(msg));
 		linphone_chat_message_set_to_be_stored(msg, FALSE);
 		increaseMsgCount = FALSE;
 		if (lp_config_get_int(core->config, "sip", "deliver_imdn", 0) != 1) {
 			goto end;
 		}
-	} else if (ContentType::isText(msg->content_type)) {
+	} else if (ContentType::isText(linphone_chat_message_get_content_type(msg))) {
 		linphone_chat_message_set_to_be_stored(msg, TRUE);
 	}
 
@@ -475,16 +480,16 @@ LinphoneReason ChatRoomPrivate::messageReceived (SalOp *op, const SalMessage *sa
 			unreadCount = 1;
 		else
 			unreadCount++;
-		/* Mark the message as pending so that if linphone_core_chat_room_mark_as_read() is called
-			 in the linphone_chat_room_message_received() callback, it will effectively be marked as
-			 being read before being stored. */
+		/* Mark the message as pending so that if ChatRoom::markAsRead() is called in the
+		 * ChatRoomPrivate::chatMessageReceived() callback, it will effectively be marked as
+		 * being read before being stored. */
 		pendingMessage = msg;
 	}
 
 	chatMessageReceived(msg);
 
 	if (linphone_chat_message_get_to_be_stored(msg)) {
-		msg->storage_id = linphone_chat_message_store(msg);
+		linphone_chat_message_store(msg);
 	}
 
 	pendingMessage = nullptr;
@@ -495,76 +500,20 @@ end:
 	return reason;
 }
 
-void ChatRoomPrivate::realtimeTextReceived (uint32_t character, LinphoneCall *call) {
-	L_Q(ChatRoom);
-	const uint32_t new_line = 0x2028;
-	const uint32_t crlf = 0x0D0A;
-	const uint32_t lf = 0x0A;
-
-	if (call && linphone_call_params_realtime_text_enabled(linphone_call_get_current_params(call))) {
-		LinphoneChatMessageCharacter *cmc = bctbx_new0(LinphoneChatMessageCharacter, 1);
-
-		if (!pendingMessage)
-			pendingMessage = q->createMessage("");
-
-		cmc->value = character;
-		cmc->has_been_read = FALSE;
-		receivedRttCharacters.push_back(cmc);
-
-		remoteIsComposing = true;
-		linphone_core_notify_is_composing_received(core, cBackPointer);
-
-		if ((character == new_line) || (character == crlf) || (character == lf)) {
-			/* End of message */
-			lDebug() << "New line received, forge a message with content " << pendingMessage->message;
-			linphone_chat_message_set_from(pendingMessage, peerAddress);
-			if (pendingMessage->to)
-				linphone_address_unref(pendingMessage->to);
-			pendingMessage->to = linphone_call_get_dest_proxy(call)
-				? linphone_address_clone(linphone_call_get_dest_proxy(call)->identity_address)
-				: linphone_address_new(linphone_core_get_identity(core));
-			pendingMessage->time = ms_time(0);
-			pendingMessage->state = LinphoneChatMessageStateDelivered;
-			pendingMessage->dir = LinphoneChatMessageIncoming;
-
-			if (lp_config_get_int(core->config, "misc", "store_rtt_messages", 1) == 1)
-				storeOrUpdateMessage(pendingMessage);
-
-			if (unreadCount < 0) unreadCount = 1;
-			else unreadCount++;
-
-			chatMessageReceived(pendingMessage);
-			linphone_chat_message_unref(pendingMessage);
-			pendingMessage = nullptr;
-			for (auto it = receivedRttCharacters.begin(); it != receivedRttCharacters.end(); it++)
-				ms_free(*it);
-			receivedRttCharacters.clear();
-		} else {
-			char *value = Utils::utf8ToChar(character);
-			pendingMessage->message = ms_strcat_printf(pendingMessage->message, value);
-			lDebug() << "Received RTT character: " << value << " (" << character << "), pending text is " << pendingMessage->message;
-			delete value;
-		}
-	}
-}
-
 // -----------------------------------------------------------------------------
 
 void ChatRoomPrivate::chatMessageReceived (LinphoneChatMessage *msg) {
-	if (msg->message) {
-		/* Legacy API */
-		linphone_core_notify_text_message_received(core, cBackPointer, msg->from, msg->message);
-	}
-	linphone_core_notify_message_received(core, cBackPointer, msg);
-	if (!ContentType::isImdn(msg->content_type) && !ContentType::isImIsComposing(msg->content_type)) {
+	L_Q();
+	if (!ContentType::isImdn(linphone_chat_message_get_content_type(msg)) && !ContentType::isImIsComposing(linphone_chat_message_get_content_type(msg))) {
+		notifyChatMessageReceived(msg);
 		remoteIsComposing = false;
-		linphone_core_notify_is_composing_received(core, cBackPointer);
+		linphone_core_notify_is_composing_received(core, L_GET_C_BACK_PTR(q));
 		linphone_chat_message_send_delivery_notification(msg, LinphoneReasonNone);
 	}
 }
 
 void ChatRoomPrivate::imdnReceived (const string &text) {
-	L_Q(ChatRoom);
+	L_Q();
 	Imdn::parse(*q, text);
 }
 
@@ -574,34 +523,66 @@ void ChatRoomPrivate::isComposingReceived (const string &text) {
 
 // -----------------------------------------------------------------------------
 
-void ChatRoomPrivate::isComposingStateChanged (bool isComposing) {
+void ChatRoomPrivate::notifyChatMessageReceived (LinphoneChatMessage *msg) {
+	L_Q();
+	LinphoneChatRoom *cr = L_GET_C_BACK_PTR(q);
+	if (linphone_chat_message_get_text(msg)) {
+		/* Legacy API */
+		linphone_core_notify_text_message_received(core, cr, linphone_chat_message_get_from_address(msg), linphone_chat_message_get_text(msg));
+	}
+	LinphoneChatRoomCbs *cbs = linphone_chat_room_get_callbacks(cr);
+	LinphoneChatRoomCbsMessageReceivedCb cb = linphone_chat_room_cbs_get_message_received(cbs);
+	if (cb)
+		cb(cr, msg);
+	linphone_core_notify_message_received(core, cr, msg);
+}
+
+void ChatRoomPrivate::notifyStateChanged () {
+	L_Q();
+	LinphoneChatRoom *cr = L_GET_C_BACK_PTR(q);
+	LinphoneChatRoomCbs *cbs = linphone_chat_room_get_callbacks(cr);
+	LinphoneChatRoomCbsStateChangedCb cb = linphone_chat_room_cbs_get_state_changed(cbs);
+	if (cb)
+		cb(cr, (LinphoneChatRoomState)state);
+}
+
+void ChatRoomPrivate::notifyUndecryptableMessageReceived (LinphoneChatMessage *msg) {
+	L_Q();
+	LinphoneChatRoom *cr = L_GET_C_BACK_PTR(q);
+	LinphoneChatRoomCbs *cbs = linphone_chat_room_get_callbacks(cr);
+	LinphoneChatRoomCbsUndecryptableMessageReceivedCb cb = linphone_chat_room_cbs_get_undecryptable_message_received(cbs);
+	if (cb)
+		cb(cr, msg);
+	linphone_core_notify_message_received_unable_decrypt(core, cr, msg);
+}
+
+// -----------------------------------------------------------------------------
+
+void ChatRoomPrivate::onIsComposingStateChanged (bool isComposing) {
 	this->isComposing = isComposing;
 	sendIsComposingNotification();
 }
 
-void ChatRoomPrivate::isRemoteComposingStateChanged (bool isComposing) {
+void ChatRoomPrivate::onIsRemoteComposingStateChanged (bool isComposing) {
+	L_Q();
 	remoteIsComposing = isComposing;
-	linphone_core_notify_is_composing_received(core, cBackPointer);
+	linphone_core_notify_is_composing_received(core, L_GET_C_BACK_PTR(q));
 }
 
-void ChatRoomPrivate::isComposingRefreshNeeded () {
+void ChatRoomPrivate::onIsComposingRefreshNeeded () {
 	sendIsComposingNotification();
 }
 
 // =============================================================================
 
-ChatRoom::ChatRoom (LinphoneCore *core, LinphoneAddress *peerAddress) : Object(*new ChatRoomPrivate(core)) {
-	L_D(ChatRoom);
-	d->peerAddress = peerAddress;
-	char *peerStr = linphone_address_as_string(d->peerAddress);
-	d->peer = peerStr;
-	ms_free(peerStr);
-}
+ChatRoom::ChatRoom (LinphoneCore *core) : Object(*new ChatRoomPrivate(core)) {}
+
+ChatRoom::ChatRoom (ChatRoomPrivate &p) : Object(p) {}
 
 // -----------------------------------------------------------------------------
 
 void ChatRoom::compose () {
-	L_D(ChatRoom);
+	L_D();
 	if (!d->isComposing) {
 		d->isComposing = true;
 		d->sendIsComposingNotification();
@@ -611,53 +592,49 @@ void ChatRoom::compose () {
 }
 
 LinphoneChatMessage *ChatRoom::createFileTransferMessage (const LinphoneContent *initialContent) {
-	L_D(ChatRoom);
-	LinphoneChatMessage *cm = belle_sip_object_new(LinphoneChatMessage);
-	cm->callbacks = linphone_chat_message_cbs_new();
-	cm->chat_room = d->cBackPointer;
-	cm->message = nullptr;
-	cm->file_transfer_information = linphone_content_copy(initialContent);
-	cm->dir = LinphoneChatMessageOutgoing;
-	linphone_chat_message_set_to(cm, d->peerAddress);
-	cm->from = linphone_address_new(linphone_core_get_identity(d->core));
+	L_D();
+	LinphoneChatMessage *msg = createMessage("");
+	linphone_chat_message_set_text(msg, NULL);
+	linphone_chat_message_set_file_transfer_information(msg, linphone_content_copy(initialContent));
+	linphone_chat_message_set_outgoing(msg);
+	LinphoneAddress *peer = linphone_address_new(d->peerAddress.asString().c_str());
+	linphone_chat_message_set_to_address(msg, peer);
+	linphone_address_unref(peer);
+	linphone_chat_message_set_from_address(msg, linphone_address_new(linphone_core_get_identity(d->core)));
 	/* This will be set to application/vnd.gsma.rcs-ft-http+xml when we will transfer the xml reply from server to the peers */
-	cm->content_type = nullptr;
+	linphone_chat_message_set_content_type(msg, NULL);
 	/* This will store the http request during file upload to the server */
-	cm->http_request = nullptr;
-	cm->time = ms_time(0);
-	return cm;
+	linphone_chat_message_set_http_request(msg, NULL);
+	linphone_chat_message_set_time(msg, ms_time(0));
+	return msg;
 }
 
-LinphoneChatMessage *ChatRoom::createMessage (const string &msg) {
-	L_D(ChatRoom);
-	LinphoneChatMessage *cm = belle_sip_object_new(LinphoneChatMessage);
-	cm->state = LinphoneChatMessageStateIdle;
-	cm->callbacks = linphone_chat_message_cbs_new();
-	cm->chat_room = d->cBackPointer;
-	cm->message = msg.empty() ? nullptr : ms_strdup(msg.c_str());
-	cm->content_type = ms_strdup("text/plain");
-	cm->file_transfer_information = nullptr; /* this property is used only when transfering file */
-	cm->http_request = nullptr;
-	cm->time = ms_time(0);
-	cm->is_secured = FALSE;
-	return cm;
+LinphoneChatMessage *ChatRoom::createMessage (const string &message) {
+	shared_ptr<ChatMessage> chatMessage = make_shared<ChatMessage>(static_pointer_cast<ChatRoom>(shared_from_this()));
+	LinphoneChatMessage *msg = chatMessage->getBackPtr();
+	linphone_chat_message_set_state(msg, LinphoneChatMessageStateIdle);
+	linphone_chat_message_set_text(msg, message.empty() ? nullptr : ms_strdup(message.c_str()));
+	linphone_chat_message_set_content_type(msg, ms_strdup("text/plain"));
+	linphone_chat_message_set_file_transfer_information(msg, nullptr);
+	linphone_chat_message_set_http_request(msg, NULL);
+	linphone_chat_message_set_time(msg, ms_time(0));
+	return msg;
 }
 
 void ChatRoom::deleteHistory () {
-	L_D(ChatRoom);
+	L_D();
 	if (!d->core->db) return;
-	char *peer = linphone_address_as_string_uri_only(d->peerAddress);
-	char *buf = sqlite3_mprintf("DELETE FROM history WHERE remoteContact = %Q;", peer);
+	string peer = d->peerAddress.asStringUriOnly();
+	char *buf = sqlite3_mprintf("DELETE FROM history WHERE remoteContact = %Q;", peer.c_str());
 	d->sqlRequest(d->core->db, buf);
 	sqlite3_free(buf);
-	ms_free(peer);
 	if (d->unreadCount > 0) d->unreadCount = 0;
 }
 
 void ChatRoom::deleteMessage (LinphoneChatMessage *msg) {
-	L_D(ChatRoom);
+	L_D();
 	if (!d->core->db) return;
-	char *buf = sqlite3_mprintf("DELETE FROM history WHERE id = %u;", msg->storage_id);
+	char *buf = sqlite3_mprintf("DELETE FROM history WHERE id = %u;", linphone_chat_message_get_storage_id(msg));
 	d->sqlRequest(d->core->db, buf);
 	sqlite3_free(buf);
 
@@ -667,49 +644,34 @@ void ChatRoom::deleteMessage (LinphoneChatMessage *msg) {
 }
 
 LinphoneChatMessage *ChatRoom::findMessage (const string &messageId) {
-	L_D(ChatRoom);
+	L_D();
 	LinphoneChatMessage *cm = nullptr;
 	list<LinphoneChatMessage *> l = d->findMessages(messageId);
 	if (!l.empty()) {
 		cm = l.front();
 		linphone_chat_message_ref(cm);
-		for (auto it = l.begin(); it != l.end(); it++)
-			linphone_chat_message_unref(*it);
+		for (auto &message : l)
+			linphone_chat_message_unref(message);
 	}
 	return cm;
 }
 
 LinphoneChatMessage * ChatRoom::findMessageWithDirection (const string &messageId, LinphoneChatMessageDir direction) {
-	L_D(ChatRoom);
+	L_D();
 	LinphoneChatMessage *ret = nullptr;
 	list<LinphoneChatMessage *> l = d->findMessages(messageId);
-	for (auto it = l.begin(); it != l.end(); it++) {
-		LinphoneChatMessage *cm = *it;
-		if (cm->dir == direction) {
-			linphone_chat_message_ref(cm);
-			ret = cm;
+	for (auto &message : l) {
+		if (linphone_chat_message_get_direction(message) == direction) {
+			linphone_chat_message_ref(message);
+			ret = message;
 			break;
 		}
 	}
 	if (!l.empty()) {
-		for (auto it = l.begin(); it != l.end(); it++)
-			linphone_chat_message_unref(*it);
+		for (auto &message : l)
+			linphone_chat_message_unref(message);
 	}
 	return ret;
-}
-
-uint32_t ChatRoom::getChar () const {
-	L_D(const ChatRoom);
-	if (!d->receivedRttCharacters.empty()) {
-		for (auto it = d->receivedRttCharacters.begin(); it != d->receivedRttCharacters.end(); it++) {
-			LinphoneChatMessageCharacter *cmc = *it;
-			if (!cmc->has_been_read) {
-				cmc->has_been_read = TRUE;
-				return cmc->value;
-			}
-		}
-	}
-	return 0;
 }
 
 list<LinphoneChatMessage *> ChatRoom::getHistory (int nbMessages) {
@@ -717,20 +679,20 @@ list<LinphoneChatMessage *> ChatRoom::getHistory (int nbMessages) {
 }
 
 int ChatRoom::getHistorySize () {
-	L_D(ChatRoom);
+	L_D();
 	return d->getMessagesCount(false);
 }
 
 list<LinphoneChatMessage *> ChatRoom::getHistoryRange (int startm, int endm) {
-	L_D(ChatRoom);
+	L_D();
 	if (!d->core->db) return list<LinphoneChatMessage *>();
-	char *peer = linphone_address_as_string_uri_only(d->peerAddress);
+	string peer = d->peerAddress.asStringUriOnly();
 	d->messages.clear();
 
 	/* Since we want to append query parameters depending on arguments given, we use malloc instead of sqlite3_mprintf */
 	const int bufMaxSize = 512;
 	char *buf = reinterpret_cast<char *>(ms_malloc(bufMaxSize));
-	buf = sqlite3_snprintf(bufMaxSize - 1, buf, "SELECT * FROM history WHERE remoteContact = %Q ORDER BY id DESC", peer);
+	buf = sqlite3_snprintf(bufMaxSize - 1, buf, "SELECT * FROM history WHERE remoteContact = %Q ORDER BY id DESC", peer.c_str());
 
 	if (startm < 0) startm = 0;
 	if (((endm > 0) && (endm >= startm)) || ((startm == 0) && (endm == 0))) {
@@ -762,13 +724,11 @@ list<LinphoneChatMessage *> ChatRoom::getHistoryRange (int startm, int endm) {
 	if (!d->messages.empty()) {
 		/* Fill local addr with core identity instead of per message */
 		LinphoneAddress *localAddr = linphone_address_new(linphone_core_get_identity(d->core));
-		for (auto it = d->messages.begin(); it != d->messages.end(); it++) {
-			LinphoneChatMessage *msg = *it;
-			if (msg->dir == LinphoneChatMessageOutgoing) {
-				if (msg->from != NULL) linphone_address_unref(msg->from);
-				msg->from = linphone_address_ref(localAddr);
+		for (auto &message : d->messages) {
+			if (linphone_chat_message_is_outgoing(message)) {
+				linphone_chat_message_set_from_address(message, linphone_address_ref(localAddr));
 			} else {
-				msg->to = linphone_address_ref(localAddr);
+				linphone_chat_message_set_to_address(message, linphone_address_ref(localAddr));
 			}
 		}
 		linphone_address_unref(localAddr);
@@ -776,41 +736,39 @@ list<LinphoneChatMessage *> ChatRoom::getHistoryRange (int startm, int endm) {
 
 	list<LinphoneChatMessage *> result = d->messages;
 	d->messages.clear();
-	ms_free(peer);
 	return result;
 }
 
 int ChatRoom::getUnreadMessagesCount () {
-	L_D(ChatRoom);
+	L_D();
 	return d->getMessagesCount(true);
 }
 
 bool ChatRoom::isRemoteComposing () const {
-	L_D(const ChatRoom);
+	L_D();
 	return d->remoteIsComposing;
 }
 
 void ChatRoom::markAsRead () {
-	L_D(ChatRoom);
+	L_D();
 
 	if (!d->core->db) return;
 
 	/* Optimization: do not modify the database if no message is marked as unread */
 	if (getUnreadMessagesCount() == 0) return;
 
-	char *peer = linphone_address_as_string_uri_only(d->peerAddress);
-	char *buf = sqlite3_mprintf("SELECT * FROM history WHERE remoteContact = %Q AND direction = %i AND status != %i", peer, LinphoneChatMessageIncoming, LinphoneChatMessageStateDisplayed);
+	string peer = d->peerAddress.asStringUriOnly();
+	char *buf = sqlite3_mprintf("SELECT * FROM history WHERE remoteContact = %Q AND direction = %i AND status != %i", peer.c_str(), LinphoneChatMessageIncoming, LinphoneChatMessageStateDisplayed);
 	d->sqlRequestMessage(d->core->db, buf);
 	sqlite3_free(buf);
-	for (auto it = d->messages.begin(); it != d->messages.end(); it++) {
-		linphone_chat_message_send_display_notification(*it);
-		linphone_chat_message_unref(*it);
+	for (auto &message : d->messages) {
+		linphone_chat_message_send_display_notification(message);
+		linphone_chat_message_unref(message);
 	}
 	d->messages.clear();
-	buf = sqlite3_mprintf("UPDATE history SET status=%i WHERE remoteContact=%Q AND direction=%i;", LinphoneChatMessageStateDisplayed, peer, LinphoneChatMessageIncoming);
+	buf = sqlite3_mprintf("UPDATE history SET status=%i WHERE remoteContact=%Q AND direction=%i;", LinphoneChatMessageStateDisplayed, peer.c_str(), LinphoneChatMessageIncoming);
 	d->sqlRequest(d->core->db, buf);
 	sqlite3_free(buf);
-	ms_free(peer);
 
 	if (d->pendingMessage) {
 		linphone_chat_message_set_state(d->pendingMessage, LinphoneChatMessageStateDisplayed);
@@ -821,20 +779,12 @@ void ChatRoom::markAsRead () {
 }
 
 void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
-	L_D(ChatRoom);
+	L_D();
 
-	/* Stubed rtt */
-	if (d->call && linphone_call_params_realtime_text_enabled(linphone_call_get_current_params(d->call))) {
-		uint32_t new_line = 0x2028;
-		linphone_chat_message_put_char(msg, new_line);
-		linphone_chat_message_unref(msg);
-		return;
-	}
-
-	msg->dir = LinphoneChatMessageOutgoing;
+	linphone_chat_message_set_outgoing(msg);
 
 	/* Check if we shall upload a file to a server */
-	if (msg->file_transfer_information && !msg->content_type) {
+	if (linphone_chat_message_get_file_transfer_information(msg) && !linphone_chat_message_get_content_type(msg)) {
 		/* Open a transaction with the server and send an empty request(RCS5.1 section 3.5.4.8.3.1) */
 		if (linphone_chat_room_upload_file(msg) == 0) {
 			/* Add to transient list only if message is going out */
@@ -846,24 +796,25 @@ void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
 			return;
 		}
 	} else {
-		SalOp *op = msg->op;
+		SalOp *op = linphone_chat_message_get_sal_op(msg);
 		LinphoneCall *call = nullptr;
-		const char *identity = nullptr;
+		string identity;
 		char *clearTextMessage = nullptr;
 		char *clearTextContentType = nullptr;
+		LinphoneAddress *peer = linphone_address_new(d->peerAddress.asString().c_str());
 
-		if (msg->message) {
-			clearTextMessage = ms_strdup(msg->message);
+		if (linphone_chat_message_get_text(msg)) {
+			clearTextMessage = ms_strdup(linphone_chat_message_get_text(msg));
 		}
-		if (msg->content_type) {
-			clearTextContentType = ms_strdup(msg->content_type);
+		if (linphone_chat_message_get_content_type(msg)) {
+			clearTextContentType = ms_strdup(linphone_chat_message_get_content_type(msg));
 		}
 
 		/* Add to transient list */
 		d->addTransientMessage(msg);
-		msg->time = ms_time(0);
+		linphone_chat_message_set_time(msg, ms_time(0));
 		if (lp_config_get_int(d->core->config, "sip", "chat_use_call_dialogs", 0) != 0) {
-			call = linphone_core_get_call_by_remote_address(d->core, d->peer.c_str());
+			call = linphone_core_get_call_by_remote_address(d->core, d->peerAddress.asString().c_str());
 			if (call) {
 				if (linphone_call_get_state(call) == LinphoneCallConnected || linphone_call_get_state(call) == LinphoneCallStreamsRunning ||
 					linphone_call_get_state(call) == LinphoneCallPaused || linphone_call_get_state(call) == LinphoneCallPausing ||
@@ -875,19 +826,15 @@ void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
 			}
 		}
 
-		if (!identity) {
-			LinphoneProxyConfig *proxy = linphone_core_lookup_known_proxy(d->core, d->peerAddress);
+		if (identity.empty()) {
+			LinphoneProxyConfig *proxy = linphone_core_lookup_known_proxy(d->core, peer);
 			if (proxy) {
-				identity = linphone_address_as_string(linphone_proxy_config_get_identity_address(proxy));
+				identity = L_GET_CPP_PTR_FROM_C_OBJECT(linphone_proxy_config_get_identity_address(proxy))->asString();
 			} else {
 				identity = linphone_core_get_primary_contact(d->core);
 			}
 		}
-		if (msg->from) {
-			/* BUG: the file transfer message constructor sets the from, but doesn't do it as well as here */
-			linphone_address_unref(msg->from);
-		}
-		msg->from = linphone_address_new(identity);
+		linphone_chat_message_set_from_address(msg, linphone_address_new(identity.c_str()));
 
 		int retval = -1;
 		LinphoneImEncryptionEngine *imee = d->core->im_encryption_engine;
@@ -895,18 +842,20 @@ void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
 			LinphoneImEncryptionEngineCbs *imeeCbs = linphone_im_encryption_engine_get_callbacks(imee);
 			LinphoneImEncryptionEngineCbsOutgoingMessageCb cbProcessOutgoingMessage = linphone_im_encryption_engine_cbs_get_process_outgoing_message(imeeCbs);
 			if (cbProcessOutgoingMessage) {
-				retval = cbProcessOutgoingMessage(imee, d->cBackPointer, msg);
+				retval = cbProcessOutgoingMessage(imee, L_GET_C_BACK_PTR(this), msg);
 				if (retval == 0) {
-					msg->is_secured = TRUE;
+					linphone_chat_message_set_is_secured(msg, TRUE);
 				}
 			}
 		}
 
 		if (!op) {
 			/* Sending out of call */
-			op = msg->op = new MessageOp(d->core->sal);
-			linphone_configure_op(d->core, op, d->peerAddress, msg->custom_headers,
-				lp_config_get_int(d->core->config, "sip", "chat_msg_with_contact", 0));
+			linphone_chat_message_set_sal_op(msg, op = new MessageOp(d->core->sal));
+			linphone_configure_op(
+				d->core, op, peer, linphone_chat_message_get_sal_custom_headers(msg),
+				!!lp_config_get_int(d->core->config, "sip", "chat_msg_with_contact", 0)
+			);
 			op->set_user_pointer(msg); /* If out of call, directly store msg */
 		}
 
@@ -915,35 +864,33 @@ void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
 			d->storeOrUpdateMessage(msg);
 			linphone_chat_message_update_state(msg, LinphoneChatMessageStateNotDelivered);
 			linphone_chat_message_unref(msg);
+			linphone_address_unref(peer);
 			return;
 		}
-		
-		auto msgOp = dynamic_cast<MessageOpInterface *>(op);
-		if (msg->external_body_url) {
-			char *content_type = ms_strdup_printf("message/external-body; access-type=URL; URL=\"%s\"", msg->external_body_url);
-			msgOp->send_message(identity, d->peer.c_str(), content_type, nullptr, nullptr);
+
+		if (linphone_chat_message_get_external_body_url(msg)) {
+			char *content_type = ms_strdup_printf("message/external-body; access-type=URL; URL=\"%s\"", linphone_chat_message_get_external_body_url(msg));
+			auto msgOp = dynamic_cast<MessageOpInterface *>(op);
+			msgOp->send_message(identity.c_str(), d->peerAddress.asString().c_str(), content_type, nullptr, nullptr);
 			ms_free(content_type);
 		} else {
-			char *peerUri = linphone_address_as_string_uri_only(d->peerAddress);
-			if (msg->content_type) {
-				msgOp->send_message(identity, d->peer.c_str(), msg->content_type, msg->message, peerUri);
+			auto msgOp = dynamic_cast<MessageOpInterface *>(op);
+			if (linphone_chat_message_get_content_type(msg)) {
+				msgOp->send_message(identity.c_str(), d->peerAddress.asString().c_str(), linphone_chat_message_get_content_type(msg), linphone_chat_message_get_text(msg), d->peerAddress.asStringUriOnly().c_str());
 			} else {
-				msgOp->send_message(identity, d->peer.c_str(), msg->message);
+				msgOp->send_message(identity.c_str(), d->peerAddress.asString().c_str(), linphone_chat_message_get_text(msg));
 			}
-			ms_free(peerUri);
 		}
 
-		if (msg->message && clearTextMessage && strcmp(msg->message, clearTextMessage) != 0) {
+		if (linphone_chat_message_get_text(msg) && clearTextMessage && strcmp(linphone_chat_message_get_text(msg), clearTextMessage) != 0) {
 			/* We replace the encrypted message by the original one so it can be correctly stored and displayed by the application */
-			ms_free(msg->message);
-			msg->message = ms_strdup(clearTextMessage);
+			linphone_chat_message_set_text(msg, ms_strdup(clearTextMessage));
 		}
-		if (msg->content_type && clearTextContentType && (strcmp(msg->content_type, clearTextContentType) != 0)) {
+		if (linphone_chat_message_get_content_type(msg) && clearTextContentType && (strcmp(linphone_chat_message_get_content_type(msg), clearTextContentType) != 0)) {
 			/* We replace the encrypted content type by the original one */
-			ms_free(msg->content_type);
-			msg->content_type = ms_strdup(clearTextContentType);
+			linphone_chat_message_set_content_type(msg, ms_strdup(clearTextContentType));
 		}
-		msg->message_id = ms_strdup(op->get_call_id());     /* must be known at that time */
+		linphone_chat_message_set_message_id(msg, ms_strdup(op->get_call_id()));     /* must be known at that time */
 		d->storeOrUpdateMessage(msg);
 
 		if (d->isComposing)
@@ -957,40 +904,40 @@ void ChatRoom::sendMessage (LinphoneChatMessage *msg) {
 		if (clearTextContentType) {
 			ms_free(clearTextContentType);
 		}
+		linphone_address_unref(peer);
 
 		if (call && linphone_call_get_op(call) == op) {
 			/* In this case, chat delivery status is not notified, so unrefing chat message right now */
 			/* Might be better fixed by delivering status, but too costly for now */
-			linphone_chat_room_remove_transient_message(msg->chat_room, msg);
+			linphone_chat_room_remove_transient_message(linphone_chat_message_get_chat_room(msg), msg);
 			linphone_chat_message_unref(msg);
 			return;
 		}
 	}
 
 	/* If operation failed, we should not change message state */
-	if (msg->dir == LinphoneChatMessageOutgoing) {
+	if (linphone_chat_message_is_outgoing(msg)) {
 		linphone_chat_message_set_state(msg, LinphoneChatMessageStateInProgress);
 	}
 }
 
 // -----------------------------------------------------------------------------
 
-LinphoneCall *ChatRoom::getCall () const {
-	L_D(const ChatRoom);
-	return d->call;
-}
-
 LinphoneCore *ChatRoom::getCore () const {
-	L_D(const ChatRoom);
+	L_D();
 	return d->core;
 }
 
 // -----------------------------------------------------------------------------
 
-const LinphoneAddress *ChatRoom::getPeerAddress () const {
-	L_D(const ChatRoom);
+const Address& ChatRoom::getPeerAddress () const {
+	L_D();
 	return d->peerAddress;
 }
 
-LINPHONE_END_NAMESPACE
+ChatRoom::State ChatRoom::getState () const {
+	L_D();
+	return d->state;
+}
 
+LINPHONE_END_NAMESPACE

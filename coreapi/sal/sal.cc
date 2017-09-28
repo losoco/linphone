@@ -472,7 +472,7 @@ int Sal::add_listen_port(SalAddress* addr, bool_t is_tunneled) {
 	return result;
 }
 
-int Sal::set_listen_port(const char *addr, int port, SalTransport tr, int is_tunneled) {
+int Sal::set_listen_port(const char *addr, int port, SalTransport tr, bool_t is_tunneled) {
 	SalAddress* sal_addr = sal_address_new(NULL);
 	int result;
 	sal_address_set_domain(sal_addr,addr);
@@ -702,10 +702,10 @@ int Sal::generate_uuid(char *uuid, size_t len) {
 	if (len==0) return -1;
 	/*create an UUID as described in RFC4122, 4.4 */
 	belle_sip_random_bytes((unsigned char*)&uuid_struct, sizeof(sal_uuid_t));
-	uuid_struct.clock_seq_hi_and_reserved&=~(1<<6);
-	uuid_struct.clock_seq_hi_and_reserved|=1<<7;
-	uuid_struct.time_hi_and_version&=~(0xf<<12);
-	uuid_struct.time_hi_and_version|=4<<12;
+	uuid_struct.clock_seq_hi_and_reserved&=(unsigned char)~(1<<6);
+	uuid_struct.clock_seq_hi_and_reserved|=(unsigned char)1<<7;
+	uuid_struct.time_hi_and_version&=(unsigned char)~(0xf<<12);
+	uuid_struct.time_hi_and_version|=(unsigned char)4<<12;
 
 	written=snprintf(uuid,len,"%8.8x-%4.4x-%4.4x-%2.2x%2.2x-", uuid_struct.time_low, uuid_struct.time_mid,
 			uuid_struct.time_hi_and_version, uuid_struct.clock_seq_hi_and_reserved,
@@ -892,19 +892,6 @@ void *SalOp::unref() {
 void SalOp::set_contact_address(const SalAddress *address) {
 	if (this->contact_address) sal_address_destroy(this->contact_address);
 	this->contact_address=address?sal_address_clone(address):NULL;
-}
-
-void SalOp::set_and_clean_contact_address(SalAddress *contact) {
-	if (contact){
-		SalTransport tport = sal_address_get_transport(contact);
-		const char* gruu = bctbx_strdup(sal_address_get_uri_param(contact, "gr"));
-		sal_address_clean(contact); /* clean out contact_params that come from proxy config*/
-		sal_address_set_transport(contact,tport);
-		if(gruu)
-			sal_address_set_uri_param(contact, "gr", gruu);
-		set_contact_address(contact);
-		sal_address_unref(contact);
-	}
 }
 
 void SalOp::assign_address(SalAddress** address, const char *value) {

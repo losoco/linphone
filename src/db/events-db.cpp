@@ -25,7 +25,7 @@
 #include "abstract/abstract-db-p.h"
 #include "chat/chat-message.h"
 #include "event-log/call-event.h"
-#include "event-log/message-event.h"
+#include "event-log/chat-message-event.h"
 #include "logger/logger.h"
 
 #include "events-db.h"
@@ -42,11 +42,11 @@ class EventsDbPrivate : public AbstractDbPrivate {};
 
 EventsDb::EventsDb () : AbstractDb(*new EventsDbPrivate) {}
 
+#ifdef SOCI_ENABLED
+
 // -----------------------------------------------------------------------------
 // Soci backend.
 // -----------------------------------------------------------------------------
-
-#ifdef SOCI_ENABLED
 
 	template<typename T>
 	struct EnumToSql {
@@ -129,7 +129,7 @@ EventsDb::EventsDb () : AbstractDb(*new EventsDbPrivate) {}
 // -----------------------------------------------------------------------------
 
 	void EventsDb::init () {
-		L_D(EventsDb);
+		L_D();
 		soci::session *session = d->dbSession.getBackendSession<soci::session>();
 
 		*session <<
@@ -169,10 +169,18 @@ EventsDb::EventsDb () : AbstractDb(*new EventsDbPrivate) {}
 		*session <<
 			"CREATE TABLE IF NOT EXISTS dialog ("
 			"  id" + primaryKeyAutoIncrementStr() + ","
-			"  local_sip_address_id INT UNSIGNED NOT NULL," // Sip address used to communicate.
-			"  remote_sip_address_id INT UNSIGNED NOT NULL," // Server (for conference) or user sip address.
-			"  creation_timestamp TIMESTAMP NOT NULL," // Dialog creation date.
-			"  last_update_timestamp TIMESTAMP NOT NULL," // Last event timestamp (call, message...).
+
+			// Sip address used to communicate.
+			"  local_sip_address_id INT UNSIGNED NOT NULL,"
+
+			// Server (for conference) or user sip address.
+			"  remote_sip_address_id INT UNSIGNED NOT NULL,"
+
+			// Dialog creation date.
+			"  creation_timestamp TIMESTAMP NOT NULL,"
+
+			// Last event timestamp (call, message...).
+			"  last_update_timestamp TIMESTAMP NOT NULL,"
 			"  FOREIGN KEY (local_sip_address_id)"
 			"    REFERENCES sip_address(id)"
 			"    ON DELETE CASCADE,"
@@ -189,11 +197,19 @@ EventsDb::EventsDb () : AbstractDb(*new EventsDbPrivate) {}
 			"  state_id TINYINT UNSIGNED NOT NULL,"
 			"  direction_id TINYINT UNSIGNED NOT NULL,"
 			"  sender_sip_address_id INT UNSIGNED NOT NULL,"
-			"  imdn_message_id VARCHAR(255) NOT NULL," // See: https://tools.ietf.org/html/rfc5438#section-6.3
+
+			// See: https://tools.ietf.org/html/rfc5438#section-6.3
+			"  imdn_message_id VARCHAR(255) NOT NULL,"
+
 			"  is_secured BOOLEAN NOT NULL,"
-			"  content_type VARCHAR(255) NOT NULL," // Content type of text. (Html or text for example.)
+
+			// Content type of text. (Html or text for example.)
+			"  content_type VARCHAR(255) NOT NULL,"
 			"  text TEXT,"
-			"  app_data VARCHAR(2048)," // App user data.
+
+			// App user data.
+			"  app_data VARCHAR(2048),"
+
 			"  FOREIGN KEY (event_id)"
 			"    REFERENCES event(id)"
 			"    ON DELETE CASCADE,"
@@ -215,10 +231,18 @@ EventsDb::EventsDb () : AbstractDb(*new EventsDbPrivate) {}
 			"CREATE TABLE IF NOT EXISTS message_file_info ("
 			"  id" + primaryKeyAutoIncrementStr() + ","
 			"  message_id INT UNSIGNED NOT NULL,"
-			"  content_type VARCHAR(255) NOT NULL," // File content type.
-			"  name VARCHAR(255) NOT NULL," // File name.
-			"  size INT UNSIGNED NOT NULL," // File size.
-			"  url VARCHAR(255) NOT NULL," // File url.
+
+			// File content type.
+			"  content_type VARCHAR(255) NOT NULL,"
+
+			// File name.
+			"  name VARCHAR(255) NOT NULL,"
+
+			// File size.
+			"  size INT UNSIGNED NOT NULL,"
+
+			// File url.
+			"  url VARCHAR(255) NOT NULL,"
 			"  key VARCHAR(4096),"
 			"  key_size INT UNSIGNED,"
 			"  FOREIGN KEY (message_id)"
@@ -281,17 +305,17 @@ EventsDb::EventsDb () : AbstractDb(*new EventsDbPrivate) {}
 
 		// TODO.
 		switch (eventLog.getType()) {
-			case EventLog::TypeNone:
+			case EventLog::Type::None:
 				return false;
-			case EventLog::TypeMessage:
-			case EventLog::TypeCallStart:
-			case EventLog::TypeCallEnd:
-			case EventLog::TypeConferenceCreated:
-			case EventLog::TypeConferenceDestroyed:
-			case EventLog::TypeConferenceParticipantAdded:
-			case EventLog::TypeConferenceParticipantRemoved:
-			case EventLog::TypeConferenceParticipantSetAdmin:
-			case EventLog::TypeConferenceParticipantUnsetAdmin:
+			case EventLog::Type::ChatMessage:
+			case EventLog::Type::CallStart:
+			case EventLog::Type::CallEnd:
+			case EventLog::Type::ConferenceCreated:
+			case EventLog::Type::ConferenceDestroyed:
+			case EventLog::Type::ConferenceParticipantAdded:
+			case EventLog::Type::ConferenceParticipantRemoved:
+			case EventLog::Type::ConferenceParticipantSetAdmin:
+			case EventLog::Type::ConferenceParticipantUnsetAdmin:
 				break;
 		}
 
@@ -320,7 +344,7 @@ EventsDb::EventsDb () : AbstractDb(*new EventsDbPrivate) {}
 	}
 
 	int EventsDb::getEventsCount (FilterMask mask) const {
-		L_D(const EventsDb);
+		L_D();
 
 		if (!isConnected()) {
 			lWarning() << "Unable to get events count. Not connected.";
@@ -342,7 +366,7 @@ EventsDb::EventsDb () : AbstractDb(*new EventsDbPrivate) {}
 	}
 
 	int EventsDb::getMessagesCount (const string &remoteAddress) const {
-		L_D(const EventsDb);
+		L_D();
 
 		if (!isConnected()) {
 			lWarning() << "Unable to get messages count. Not connected.";
@@ -369,7 +393,7 @@ EventsDb::EventsDb () : AbstractDb(*new EventsDbPrivate) {}
 	}
 
 	int EventsDb::getUnreadMessagesCount (const string &remoteAddress) const {
-		L_D(const EventsDb);
+		L_D();
 
 		if (!isConnected()) {
 			lWarning() << "Unable to get unread messages count. Not connected.";

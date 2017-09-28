@@ -36,7 +36,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <unistd.h>
 #endif
 
-#include "c-wrapper/c-tools.h"
+#include "c-wrapper/c-wrapper.h"
 #include "call/call-p.h"
 #include "conference/session/call-session.h"
 #include "conference/session/call-session-p.h"
@@ -172,7 +172,7 @@ static void call_received(SalCall *h) {
 	LinphoneCall *call = linphone_call_new_incoming(lc, fromAddr, toAddr, h);
 	linphone_address_unref(fromAddr);
 	linphone_address_unref(toAddr);
-	L_GET_PRIVATE(linphone_call_get_cpp_obj(call).get())->startIncomingNotification();
+	L_GET_PRIVATE_FROM_C_OBJECT(call)->startIncomingNotification();
 }
 
 static void call_rejected(SalCall *h){
@@ -327,27 +327,16 @@ static void auth_failure(SalOp *op, SalAuthInfo* info) {
 }
 
 static void register_success(SalOp *op, bool_t registered){
-	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
-	LinphoneProxyConfig *cfg=(LinphoneProxyConfig*)op->get_user_pointer();
-	char *msg;
-
+	LinphoneProxyConfig *cfg=(LinphoneProxyConfig *)op->get_user_pointer();
 	if (!cfg){
 		ms_message("Registration success for deleted proxy config, ignored");
 		return;
 	}
 	linphone_proxy_config_set_state(cfg, registered ? LinphoneRegistrationOk : LinphoneRegistrationCleared ,
 									registered ? "Registration successful" : "Unregistration done");
-	{
-		if (registered) msg=ms_strdup_printf(_("Registration on %s successful."),op->get_proxy());
-		else msg=ms_strdup_printf(_("Unregistration on %s done."),op->get_proxy());
-		linphone_core_notify_display_status(lc,msg);
-		ms_free(msg);
-	}
-
 }
 
 static void register_failure(SalOp *op){
-	LinphoneCore *lc=(LinphoneCore *)op->get_sal()->get_user_pointer();
 	LinphoneProxyConfig *cfg=(LinphoneProxyConfig*)op->get_user_pointer();
 	const SalErrorInfo *ei=op->get_error_info();
 	const char *details=ei->full_string;
@@ -357,17 +346,11 @@ static void register_failure(SalOp *op){
 		return ;
 	}
 	if (details==NULL)
-		details=_("no response timeout");
-
-	{
-		char *msg=ortp_strdup_printf(_("Registration on %s failed: %s"),op->get_proxy(), details);
-		linphone_core_notify_display_status(lc,msg);
-		ms_free(msg);
-	}
+		details="no response timeout";
 
 	if ((ei->reason == SalReasonServiceUnavailable || ei->reason == SalReasonIOError)
 			&& linphone_proxy_config_get_state(cfg) == LinphoneRegistrationOk) {
-		linphone_proxy_config_set_state(cfg,LinphoneRegistrationProgress,_("Service unavailable, retrying"));
+		linphone_proxy_config_set_state(cfg,LinphoneRegistrationProgress,"Service unavailable, retrying");
 	} else {
 		linphone_proxy_config_set_state(cfg,LinphoneRegistrationFailed,details);
 	}
@@ -418,11 +401,6 @@ static void refer_received(Sal *sal, SalOp *op, const char *referto){
 		call->refer_to=ms_strdup(referto);
 		call->refer_pending=TRUE;
 		linphone_call_set_state(call,LinphoneCallRefered,"Refered");
-		{
-			char *msg=ms_strdup_printf(_("We are transferred to %s"),referto);
-			linphone_core_notify_display_status(lc,msg);
-			ms_free(msg);
-		}
 		if (call->refer_pending) linphone_core_start_refered_call(lc,call,NULL);
 	}else {
 		linphone_core_notify_refer_received(lc,referto);
@@ -609,11 +587,11 @@ static void message_delivery_update(SalOp *op, SalMessageDeliveryStatus status){
 		return;
 	}
 	// check that the message does not belong to an already destroyed chat room - if so, do not invoke callbacks
-	if (chat_msg->chat_room != NULL) {
+	if (linphone_chat_message_get_chat_room(chat_msg) != NULL) {
 		linphone_chat_message_update_state(chat_msg, chatStatusSal2Linphone(status));
 	}
 	if (status != SalMessageDeliveryInProgress) { /*only release op if not in progress*/
-		linphone_chat_message_destroy(chat_msg);
+		linphone_chat_message_unref(chat_msg);
 	}
 }
 

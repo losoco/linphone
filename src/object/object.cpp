@@ -22,6 +22,8 @@
 
 // =============================================================================
 
+using namespace std;
+
 LINPHONE_BEGIN_NAMESPACE
 
 Object::~Object () {

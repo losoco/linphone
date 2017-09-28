@@ -19,8 +19,6 @@
 #ifndef _CALL_SESSION_H_
 #define _CALL_SESSION_H_
 
-#include <memory>
-
 #include "object/object.h"
 #include "address/address.h"
 #include "conference/conference.h"
@@ -35,14 +33,15 @@ LINPHONE_BEGIN_NAMESPACE
 class CallPrivate;
 class CallSessionPrivate;
 
-class CallSession : public Object, public std::enable_shared_from_this<CallSession> {
+class CallSession : public Object {
 	friend class CallPrivate;
+	friend class ClientGroupChatRoom;
 
 public:
-	CallSession (const Conference &conference, const std::shared_ptr<CallSessionParams> params, CallSessionListener *listener);
+	CallSession (const Conference &conference, const CallSessionParams *params, CallSessionListener *listener);
 
-	LinphoneStatus accept (const std::shared_ptr<CallSessionParams> csp = nullptr);
-	LinphoneStatus acceptUpdate (const std::shared_ptr<CallSessionParams> csp);
+	LinphoneStatus accept (const CallSessionParams *csp = nullptr);
+	LinphoneStatus acceptUpdate (const CallSessionParams *csp);
 	virtual void configure (LinphoneCallDir direction, LinphoneProxyConfig *cfg, SalCall *op, const Address &from, const Address &to);
 	LinphoneStatus decline (LinphoneReason reason);
 	LinphoneStatus decline (const LinphoneErrorInfo *ei);
@@ -50,21 +49,21 @@ public:
 	virtual bool initiateOutgoing ();
 	virtual void iterate (time_t currentRealTime, bool oneSecondElapsed);
 	virtual void startIncomingNotification ();
-	virtual int startInvite (const Address *destination);
+	virtual int startInvite (const Address *destination, const std::string &subject);
 	LinphoneStatus terminate (const LinphoneErrorInfo *ei = nullptr);
-	LinphoneStatus update (const std::shared_ptr<CallSessionParams> csp);
+	LinphoneStatus update (const CallSessionParams *csp);
 
-	std::shared_ptr<CallSessionParams> getCurrentParams ();
+	CallSessionParams *getCurrentParams () const;
 	LinphoneCallDir getDirection () const;
 	int getDuration () const;
 	const LinphoneErrorInfo * getErrorInfo () const;
 	LinphoneCallLog * getLog () const;
-	virtual const std::shared_ptr<CallSessionParams> getParams () const;
+	virtual const CallSessionParams *getParams () const;
 	LinphoneReason getReason () const;
 	const Address& getRemoteAddress () const;
 	std::string getRemoteAddressAsString () const;
 	std::string getRemoteContact () const;
-	const std::shared_ptr<CallSessionParams> getRemoteParams ();
+	const CallSessionParams *getRemoteParams ();
 	LinphoneCallState getState () const;
 
 	std::string getRemoteUserAgent () const;

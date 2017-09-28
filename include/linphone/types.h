@@ -242,25 +242,6 @@ typedef enum _LinphoneAVPFMode {
 typedef struct _LinphoneBuffer LinphoneBuffer;
 
 /**
- * The LinphoneCall object represents a call issued or received by the LinphoneCore
- * @ingroup call_control
-**/
-typedef struct _LinphoneCall LinphoneCall;
-
-/**
- * That class holds all the callbacks which are called by LinphoneCall objects.
- *
- * Use linphone_factory_create_call_cbs() to create an instance. Then, call the
- * callback setters on the events you need to monitor and pass the object to
- * a LinphoneCall instance through linphone_call_add_callbacks().
- * @ingroup call_control
- */
-typedef struct _LinphoneCallCbs LinphoneCallCbs;
-
-/** Callback prototype */
-typedef void (*LinphoneCallCbFunc)(LinphoneCall *call, void *user_data);
-
-/**
  * Enum representing the direction of a call.
  * @ingroup call_logs
 **/
@@ -338,19 +319,6 @@ typedef enum _LinphoneCallStatus {
 } LinphoneCallStatus;
 
 /**
- * A chat room message to hold content to be sent.
- * Can be created by linphone_chat_room_create_message().
- * @ingroup chatroom
- */
-typedef struct _LinphoneChatMessage LinphoneChatMessage;
-
-/**
- * An object to handle the callbacks for the handling a LinphoneChatMessage objects.
- * @ingroup chatroom
- */
-typedef struct _LinphoneChatMessageCbs LinphoneChatMessageCbs;
-
-/**
  * LinphoneChatMessageState is used to notify if messages have been succesfully delivered or not.
  * @ingroup chatroom
  */
@@ -364,13 +332,6 @@ typedef enum _LinphoneChatMessageState {
 	LinphoneChatMessageStateDeliveredToUser, /**< Message successfully delivered and acknowledged to destination */
 	LinphoneChatMessageStateDisplayed /**< Message displayed to the remote user */
 } LinphoneChatMessageState;
-
-/**
- * A chat room is the place where text messages are exchanged.
- * Can be created by linphone_core_create_chat_room().
- * @ingroup chatroom
- */
-typedef struct _LinphoneChatRoom LinphoneChatRoom;
 
 /**
  * LinphoneConference class

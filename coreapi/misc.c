@@ -18,7 +18,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-#include "private.h"
 #include "linphone/lpconfig.h"
 #include "linphone/wrapper_utils.h"
 #include "mediastreamer2/mediastream.h"
@@ -58,6 +57,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include "nat/stun-client.h"
 #include "utils/payload-type-handler.h"
+
+#include "c-wrapper/c-wrapper.h"
 
 void linphone_core_update_allocated_audio_bandwidth(LinphoneCore *lc){
 	const bctbx_list_t *elem;
@@ -320,13 +321,13 @@ unsigned int linphone_core_get_audio_features(LinphoneCore *lc){
 	if (ret==AUDIO_STREAM_FEATURE_ALL){
 		/*since call recording is specified before creation of the stream in linphonecore,
 		* it will be requested on demand. It is not necessary to include it all the time*/
-		ret&=~AUDIO_STREAM_FEATURE_MIXED_RECORDING;
+		ret&=(unsigned int) ~AUDIO_STREAM_FEATURE_MIXED_RECORDING;
 	}
 	return ret;
 }
 
 bool_t linphone_core_tone_indications_enabled(LinphoneCore*lc){
-	return lp_config_get_int(lc->config,"sound","tone_indications",1);
+	return !!lp_config_get_int(lc->config,"sound","tone_indications",1);
 }
 
 int linphone_core_get_local_ip_for(int type, const char *dest, char *result){
@@ -640,7 +641,7 @@ const MSCryptoSuite * linphone_core_get_srtp_crypto_suites(LinphoneCore *lc){
 	char *pos;
 	char *nextpos;
 	char *params;
-	int found=0;
+	unsigned long found=0;
 	MSCryptoSuite *result=NULL;
 	pos=tmp;
 	do{
@@ -835,7 +836,7 @@ bool_t linphone_core_symmetric_rtp_enabled(LinphoneCore*lc){
 	/* Clients don't really need rtp symmetric, unless they have a public IP address and want
 	 * to interoperate with natted client. This case is not frequent with client apps.
 	 */
-	return lp_config_get_int(lc->config,"rtp","symmetric",0);
+	return !!lp_config_get_int(lc->config,"rtp","symmetric",0);
 }
 
 LinphoneStatus linphone_core_set_network_simulator_params(LinphoneCore *lc, const OrtpNetworkSimulatorParams *params){

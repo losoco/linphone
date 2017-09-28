@@ -724,7 +724,6 @@ SalOp * sal_op_new(Sal *sal);
 /*generic SalOp API, working for all operations */
 Sal *sal_op_get_sal(const SalOp *op);
 void sal_op_set_contact_address(SalOp *op, const SalAddress* address);
-void sal_op_set_and_clean_contact_address(SalOp *op, SalAddress* address);
 void sal_op_set_route(SalOp *op, const char *route);
 void sal_op_set_route_address(SalOp *op, const SalAddress* address);
 void sal_op_add_route_address(SalOp *op, const SalAddress* address);
@@ -809,7 +808,7 @@ extern "C" {
 #if 0
 int sal_call_set_local_media_description(SalOp *h, SalMediaDescription *desc);
 int sal_call_set_local_custom_body(SalOp *op, SalCustomBody *body);
-int sal_call(SalOp *h, const char *from, const char *to);
+int sal_call(SalOp *h, const char *from, const char *to, const char *subject);
 int sal_call_notify_ringing(SalOp *h, bool_t early_media);
 /*accept an incoming call or, during a call accept a reINVITE*/
 int sal_call_accept(SalOp*h);

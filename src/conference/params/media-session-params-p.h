@@ -27,7 +27,6 @@
 
 // =============================================================================
 
-extern std::shared_ptr<LinphonePrivate::MediaSessionParams> linphone_call_params_get_cpp_obj(const LinphoneCallParams *params);
 extern LinphoneCallParams * linphone_call_params_new_for_wrapper(void);
 
 // =============================================================================
@@ -39,6 +38,11 @@ public:
 	MediaSessionParamsPrivate ();
 	MediaSessionParamsPrivate (const MediaSessionParamsPrivate &src);
 	virtual ~MediaSessionParamsPrivate ();
+
+	MediaSessionParamsPrivate &operator= (const MediaSessionParamsPrivate &src);
+
+	static void clone (const MediaSessionParamsPrivate &src, MediaSessionParamsPrivate &dst);
+	void clean ();
 
 	static SalStreamDir mediaDirectionToSalStreamDir (LinphoneMediaDirection direction);
 	static LinphoneMediaDirection salStreamDirToMediaDirection (SalStreamDir dir);
@@ -115,7 +119,6 @@ private:
 	SalCustomSdpAttribute *customSdpAttributes = nullptr;
 	SalCustomSdpAttribute *customSdpMediaAttributes[LinphoneStreamTypeUnknown];
 
-public:
 	L_DECLARE_PUBLIC(MediaSessionParams);
 };
 

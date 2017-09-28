@@ -20,8 +20,6 @@
 #include "db/provider/db-session-provider.h"
 #include "logger/logger.h"
 
-#include "abstract-db.h"
-
 // =============================================================================
 
 using namespace std;
@@ -31,7 +29,7 @@ LINPHONE_BEGIN_NAMESPACE
 AbstractDb::AbstractDb (AbstractDbPrivate &p) : Object(*new AbstractDbPrivate) {}
 
 bool AbstractDb::connect (Backend backend, const string &parameters) {
-	L_D(AbstractDb);
+	L_D();
 
 	d->backend = backend;
 	d->dbSession = DbSessionProvider::getInstance()->getSession(
@@ -53,12 +51,12 @@ bool AbstractDb::connect (Backend backend, const string &parameters) {
 }
 
 bool AbstractDb::isConnected () const {
-	L_D(const AbstractDb);
+	L_D();
 	return d->dbSession;
 }
 
 AbstractDb::Backend AbstractDb::getBackend () const {
-	L_D(const AbstractDb);
+	L_D();
 	return d->backend;
 }
 
@@ -71,7 +69,7 @@ void AbstractDb::init () {
 // -----------------------------------------------------------------------------
 
 string AbstractDb::primaryKeyAutoIncrementStr (const string &type) const {
-	L_D(const AbstractDb);
+	L_D();
 
 	switch (d->backend) {
 		case Mysql:

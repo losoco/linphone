@@ -22,11 +22,11 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
- 
+
 #include "linphone/core.h"
-#include "private.h"
 #include "linphone/lpconfig.h"
 
+#include "c-wrapper/c-wrapper.h"
 
 struct _LinphoneInfoMessage{
 	belle_sip_object_t base;
@@ -76,12 +76,6 @@ LinphoneInfoMessage *linphone_core_create_info_message(LinphoneCore *lc){
 	return belle_sip_object_new(LinphoneInfoMessage);
 }
 
-LinphoneStatus linphone_call_send_info_message(LinphoneCall *call, const LinphoneInfoMessage *info) {
-	SalBodyHandler *body_handler = sal_body_handler_from_content(info->content);
-	linphone_call_get_op(call)->set_sent_custom_header(info->headers);
-	return linphone_call_get_op(call)->send_info(NULL, NULL, body_handler);
-}
-
 void linphone_info_message_add_header(LinphoneInfoMessage *im, const char *name, const char *value){
 	im->headers=sal_custom_header_append(im->headers, name, value);
 }
@@ -96,6 +90,10 @@ void linphone_info_message_set_content(LinphoneInfoMessage *im,  const LinphoneC
 
 const LinphoneContent * linphone_info_message_get_content(const LinphoneInfoMessage *im){
 	return (im->content && linphone_content_get_type(im->content)) ? im->content : NULL;
+}
+
+SalCustomHeader *linphone_info_message_get_headers (const LinphoneInfoMessage *im) {
+	return im->headers;
 }
 
 void linphone_core_notify_info_message(LinphoneCore* lc,SalOp *op, SalBodyHandler *body_handler){

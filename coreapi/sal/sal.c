@@ -611,19 +611,6 @@ void sal_op_set_contact_address(SalOp *op, const SalAddress *address){
 	((SalOpBase*)op)->contact_address=address?sal_address_clone(address):NULL;
 }
 
-void sal_op_set_and_clean_contact_address(SalOp *op, SalAddress *contact) {
-	if (contact){
-		SalTransport tport = sal_address_get_transport((SalAddress*)contact);
-		const char* gruu = bctbx_strdup(sal_address_get_uri_param(contact, "gr"));
-		sal_address_clean((SalAddress*)contact); /* clean out contact_params that come from proxy config*/
-		sal_address_set_transport((SalAddress*)contact,tport);
-		if(gruu)
-			sal_address_set_uri_param(contact, "gr", gruu);
-		sal_op_set_contact_address(op, contact);
-		sal_address_unref(contact);
-	}
-}
-
 const SalAddress* sal_op_get_contact_address(const SalOp *op) {
 	return ((SalOpBase*)op)->contact_address;
 }
@@ -1000,7 +987,7 @@ static int line_get_value(const char *input, const char *key, char *value, size_
 	char *equal;
 	size_t len;
 	if (!end) len=strlen(input);
-	else len=end +1 -input;
+	else len=(size_t)(end + 1 - input);
 	*read=len;
 	strncpy(line,input,MIN(len,sizeof(line)));
 	equal=strchr(line,'=');

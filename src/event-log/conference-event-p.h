@@ -19,8 +19,8 @@
 #ifndef _CONFERENCE_EVENT_P_H_
 #define _CONFERENCE_EVENT_P_H_
 
+#include "address/address.h"
 #include "conference-event.h"
-
 #include "event-log-p.h"
 
 // =============================================================================
@@ -29,7 +29,7 @@ LINPHONE_BEGIN_NAMESPACE
 
 class ConferenceEventPrivate : public EventLogPrivate {
 private:
-	std::shared_ptr<const Address> address;
+	Address address;
 
 	L_DECLARE_PUBLIC(ConferenceEvent);
 };

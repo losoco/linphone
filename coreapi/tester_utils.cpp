@@ -56,18 +56,6 @@ void linphone_core_cbs_set_auth_info_requested(LinphoneCoreCbs *cbs, LinphoneCor
 	cbs->vtable->auth_info_requested = cb;
 }
 
-bool_t linphone_call_stats_is_updated(const LinphoneCallStats *stats) {
-	return stats->updated;
-}
-
-bool_t linphone_call_stats_get_rtcp_received_via_mux(const LinphoneCallStats *stats) {
-	return stats->rtcp_received_via_mux;
-}
-
-mblk_t *linphone_call_stats_get_received_rtcp(const LinphoneCallStats *stats) {
-	return stats->received_rtcp;
-}
-
 LinphoneQualityReporting *linphone_call_log_get_quality_reporting(LinphoneCallLog *call_log) {
 	return &call_log->reporting;
 }

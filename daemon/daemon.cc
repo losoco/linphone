@@ -1,6 +1,6 @@
 /*
 daemon.cc
-Copyright (C) 2016 Belledonne Communications, Grenoble, France 
+Copyright (C) 2016 Belledonne Communications, Grenoble, France
 
 This library is free software; you can redistribute it and/or modify it
 under the terms of the GNU Lesser General Public License as published by
@@ -166,19 +166,19 @@ CallStatsResponse::CallStatsResponse(Daemon *daemon, LinphoneCall *call, const L
 		ostr << "Event-type: call-stats\n";
 		ostr << "Id: " << daemon->updateCallId(call) << "\n";
 		ostr << "Type: ";
-		if (stats->type == LINPHONE_CALL_STATS_AUDIO) {
+		if (linphone_call_stats_get_type(stats) == LINPHONE_CALL_STATS_AUDIO) {
 			ostr << "Audio";
 		} else {
 			ostr << "Video";
 		}
 		ostr << "\n";
 	} else {
-		prefix = ((stats->type == LINPHONE_CALL_STATS_AUDIO) ? "Audio-" : "Video-");
+		prefix = ((linphone_call_stats_get_type(stats) == LINPHONE_CALL_STATS_AUDIO) ? "Audio-" : "Video-");
 	}
 
 	printCallStatsHelper(ostr, stats, prefix);
 
-	if (stats->type == LINPHONE_CALL_STATS_AUDIO) {
+	if (linphone_call_stats_get_type(stats) == LINPHONE_CALL_STATS_AUDIO) {
 		const PayloadType *audioCodec = linphone_call_params_get_used_audio_codec(callParams);
 		ostr << PayloadTypeResponse(linphone_call_get_core(call), audioCodec, -1, prefix, false).getBody() << "\n";
 	} else {
@@ -331,11 +331,11 @@ Daemon::Daemon(const char *config_path, const char *factory_config_path, const c
 	linphone_core_set_user_data(mLc, this);
 	linphone_core_enable_video_capture(mLc,capture_video);
 	linphone_core_enable_video_display(mLc,display_video);
-	
+
 	for(const bctbx_list_t *proxy = linphone_core_get_proxy_config_list(mLc); proxy != NULL; proxy = bctbx_list_next(proxy)) {
 		updateProxyId((LinphoneProxyConfig *)bctbx_list_get_data(proxy));
 	}
-	
+
 	initCommands();
 	mUseStatsEvents=true;
 }
@@ -353,9 +353,9 @@ LinphoneSoundDaemon *Daemon::getLSD() {
 }
 
 int Daemon::updateCallId(LinphoneCall *call) {
-	int val = VOIDPTR_TO_INT(linphone_call_get_user_pointer(call));
+	int val = VOIDPTR_TO_INT(linphone_call_get_user_data(call));
 	if (val == 0) {
-		linphone_call_set_user_pointer(call, INT_TO_VOIDPTR(++mCallIds));
+		linphone_call_set_user_data(call, INT_TO_VOIDPTR(++mCallIds));
 		return mCallIds;
 	}
 	return val;
@@ -365,7 +365,7 @@ LinphoneCall *Daemon::findCall(int id) {
 	const bctbx_list_t *elem = linphone_core_get_calls(mLc);
 	for (; elem != NULL; elem = elem->next) {
 		LinphoneCall *call = (LinphoneCall *) elem->data;
-		if (VOIDPTR_TO_INT(linphone_call_get_user_pointer(call)) == id)
+		if (VOIDPTR_TO_INT(linphone_call_get_user_data(call)) == id)
 			return call;
 	}
 	return NULL;
@@ -403,7 +403,7 @@ LinphoneAuthInfo *Daemon::findAuthInfo(int id)  {
 }
 
 int Daemon::updateAudioStreamId(AudioStream *audio_stream) {
-	for (std::map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.begin(); it != mAudioStreams.end(); ++it) {
+	for (map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.begin(); it != mAudioStreams.end(); ++it) {
 		if (it->second->stream == audio_stream)
 			return it->first;
 	}
@@ -414,21 +414,21 @@ int Daemon::updateAudioStreamId(AudioStream *audio_stream) {
 }
 
 AudioStreamAndOther *Daemon::findAudioStreamAndOther(int id) {
-	std::map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.find(id);
+	map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.find(id);
 	if (it != mAudioStreams.end())
 		return it->second;
 	return NULL;
 }
 
 AudioStream *Daemon::findAudioStream(int id) {
-	std::map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.find(id);
+	map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.find(id);
 	if (it != mAudioStreams.end())
 		return it->second->stream;
 	return NULL;
 }
 
 void Daemon::removeAudioStream(int id) {
-	std::map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.find(id);
+	map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.find(id);
 	if (it != mAudioStreams.end()) {
 		mAudioStreams.erase(it);
 		delete(it->second);
@@ -518,7 +518,7 @@ void Daemon::callStateChanged(LinphoneCall *call, LinphoneCallState state, const
 void Daemon::callStatsUpdated(LinphoneCall *call, const LinphoneCallStats *stats) {
 	if (mUseStatsEvents) {
 		/* don't queue periodical updates (3 per seconds for just bandwidth updates) */
-		if (!(stats->updated & LINPHONE_CALL_STATS_PERIODICAL_UPDATE)){
+		if (!(_linphone_call_stats_get_updated(stats) & LINPHONE_CALL_STATS_PERIODICAL_UPDATE)){
 			mEventQueue.push(new CallStatsResponse(this, call, stats, true));
 		}
 	}
@@ -542,7 +542,7 @@ void Daemon::dtmfReceived(LinphoneCore *lc, LinphoneCall *call, int dtmf) {
 }
 
 void Daemon::iterateStreamStats() {
-	for (std::map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.begin(); it != mAudioStreams.end(); ++it) {
+	for (map<int, AudioStreamAndOther*>::iterator it = mAudioStreams.begin(); it != mAudioStreams.end(); ++it) {
 		OrtpEvent *ev;
 		while (it->second->queue && (NULL != (ev=ortp_ev_queue_get(it->second->queue)))){
 			OrtpEventType evt=ortp_event_get_type(ev);
@@ -730,7 +730,7 @@ void Daemon::dumpCommandsHelpHtml(){
 		cout<<"<h3>"<<"Description"<<"</h3>"<<endl;
 		cout<<"<p>"<<htmlEscape((*it)->getDescription())<<"</p>"<<endl;
 		cout<<"<h3>"<<"Examples"<<"</h3>"<<endl;
-		const std::list<const DaemonCommandExample*> &examples=(*it)->getExamples();
+		const list<const DaemonCommandExample*> &examples=(*it)->getExamples();
 		cout<<"<p><i>";
 		for(list<const DaemonCommandExample*>::const_iterator ex_it=examples.begin();ex_it!=examples.end();++ex_it){
 			cout<<"<b>"<<htmlEscape("Linphone-daemon>")<<htmlEscape((*ex_it)->getCommand())<<"</b><br>"<<endl;
@@ -792,7 +792,7 @@ string Daemon::readLine(const string& prompt, bool *eof) {
 	stringbuf outbuf;
 	cin.get(outbuf);
 	cin.clear();
-	cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+	cin.ignore(numeric_limits<streamsize>::max(), '\n');
 	return outbuf.str();
 #endif
 }
@@ -851,7 +851,7 @@ void Daemon::enableLSD(bool enabled) {
 Daemon::~Daemon() {
 	uninitCommands();
 
-	for (std::map<int, AudioStreamAndOther *>::iterator it = mAudioStreams.begin(); it != mAudioStreams.end(); ++it) {
+	for (map<int, AudioStreamAndOther *>::iterator it = mAudioStreams.begin(); it != mAudioStreams.end(); ++it) {
 		audio_stream_stop(it->second->stream);
 	}
 

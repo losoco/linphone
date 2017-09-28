@@ -19,8 +19,6 @@
 #ifndef _ADDRESS_H_
 #define _ADDRESS_H_
 
-#include <string>
-
 #include "enums.h"
 #include "object/clonable-object.h"
 
@@ -31,6 +29,8 @@ LINPHONE_BEGIN_NAMESPACE
 class AddressPrivate;
 
 class LINPHONE_PUBLIC Address : public ClonableObject {
+	friend class ClientGroupChatRoom;
+
 public:
 	Address (const std::string &address = "");
 	Address (const Address &src);
@@ -38,9 +38,11 @@ public:
 
 	Address &operator= (const Address &src);
 
-	operator bool () const;
-
 	bool operator== (const Address &address) const;
+
+	bool operator< (const Address &address) const;
+
+	bool isValid () const;
 
 	const std::string &getScheme () const;
 

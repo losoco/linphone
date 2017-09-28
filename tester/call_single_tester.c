@@ -101,17 +101,17 @@ static void rtcp_received(stats* counters, mblk_t *packet) {
 void call_stats_updated(LinphoneCore *lc, LinphoneCall *call, const LinphoneCallStats *lstats) {
 	stats* counters = get_stats(lc);
 	counters->number_of_LinphoneCallStatsUpdated++;
-	if (linphone_call_stats_is_updated(lstats) & LINPHONE_CALL_STATS_RECEIVED_RTCP_UPDATE) {
+	if (_linphone_call_stats_get_updated(lstats) & LINPHONE_CALL_STATS_RECEIVED_RTCP_UPDATE) {
 		counters->number_of_rtcp_received++;
-		if (linphone_call_stats_get_rtcp_received_via_mux(lstats)){
+		if (_linphone_call_stats_rtcp_received_via_mux(lstats)){
 			counters->number_of_rtcp_received_via_mux++;
 		}
-		rtcp_received(counters, linphone_call_stats_get_received_rtcp(lstats));
+		rtcp_received(counters, _linphone_call_stats_get_received_rtcp(lstats));
 	}
-	if (linphone_call_stats_is_updated(lstats) & LINPHONE_CALL_STATS_SENT_RTCP_UPDATE ) {
+	if (_linphone_call_stats_get_updated(lstats) & LINPHONE_CALL_STATS_SENT_RTCP_UPDATE ) {
 		counters->number_of_rtcp_sent++;
 	}
-	if (linphone_call_stats_is_updated(lstats) & LINPHONE_CALL_STATS_PERIODICAL_UPDATE ) {
+	if (_linphone_call_stats_get_updated(lstats) & LINPHONE_CALL_STATS_PERIODICAL_UPDATE ) {
 		int tab_size = sizeof (counters->audio_download_bandwidth)/sizeof(int);
 		int index = (counters->current_bandwidth_index[linphone_call_stats_get_type(lstats)]++) % tab_size;
 		LinphoneCallStats *audio_stats, *video_stats;
@@ -251,8 +251,8 @@ void liblinphone_tester_check_rtcp(LinphoneCoreManager* caller, LinphoneCoreMana
 			}
 		}
 		if (linphone_core_rtcp_enabled(callee->lc)) {
-		BC_ASSERT_EQUAL(linphone_call_stats_get_rtp_stats(audio_stats2)->sent_rtcp_packets, 0, unsigned long long, "%llu");
-		BC_ASSERT_EQUAL(linphone_call_stats_get_rtp_stats(audio_stats1)->recv_rtcp_packets, 0, unsigned long long, "%llu");
+			BC_ASSERT_EQUAL(linphone_call_stats_get_rtp_stats(audio_stats2)->sent_rtcp_packets, 0, unsigned long long, "%llu");
+			BC_ASSERT_EQUAL(linphone_call_stats_get_rtp_stats(audio_stats1)->recv_rtcp_packets, 0, unsigned long long, "%llu");
 			if (linphone_call_log_video_enabled(linphone_call_get_call_log(c1))) {
 				BC_ASSERT_EQUAL(linphone_call_stats_get_rtp_stats(video_stats1)->recv_rtcp_packets, 0, unsigned long long, "%llu");
 			}

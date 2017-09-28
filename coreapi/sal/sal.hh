@@ -91,7 +91,7 @@ public:
 	void *get_user_pointer() const {return this->up;}
 	
 	void set_callbacks(const Callbacks *cbs);
-	int set_listen_port(const char *addr, int port, SalTransport tr, int is_tunneled);
+	int set_listen_port(const char *addr, int port, SalTransport tr, bool_t is_tunneled);
 	int get_listening_port(SalTransport tr);
 	int unlisten_ports();
 	int transport_available(SalTransport t);
@@ -244,7 +244,6 @@ public:
 	void *get_user_pointer() const {return this->user_pointer;}
 	
 	void set_contact_address(const SalAddress* address);
-	void set_and_clean_contact_address(SalAddress* address);
 	void set_route(const char *route);
 	void set_route_address(const SalAddress* address);
 	void add_route_address(const SalAddress* address);

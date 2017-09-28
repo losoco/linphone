@@ -19,12 +19,15 @@
 #ifndef _CHAT_ROOM_P_H_
 #define _CHAT_ROOM_P_H_
 
+#include "linphone/enums/chat-room-enums.h"
+#include "linphone/utils/enum-generator.h"
+
 // From coreapi.
 #include "private.h"
 
 #include "chat-room.h"
-#include "is-composing.h"
 #include "is-composing-listener.h"
+#include "is-composing.h"
 #include "object/object-p.h"
 
 // =============================================================================
@@ -46,7 +49,6 @@ public:
 	std::list<LinphoneChatMessage *> getTransientMessages () const {
 		return transientMessages;
 	}
-
 	void moveTransientMessageToWeakMessages (LinphoneChatMessage *msg);
 	void removeTransientMessage (LinphoneChatMessage *msg);
 
@@ -54,15 +56,9 @@ public:
 	void sendImdn (const std::string &content, LinphoneReason reason);
 
 	int getMessagesCount (bool unreadOnly);
-	void setCBackPointer (LinphoneChatRoom *cr) {
-		this->cBackPointer = cr;
-	}
+	void setState (ChatRoom::State newState);
 
-	void setCall (LinphoneCall *call) {
-		this->call = call;
-	}
-
-private:
+protected:
 	void sendIsComposingNotification ();
 
 	int createChatMessageFromDb (int argc, char **argv, char **colName);
@@ -78,22 +74,27 @@ public:
 	LinphoneReason messageReceived (SalOp *op, const SalMessage *msg);
 	void realtimeTextReceived (uint32_t character, LinphoneCall *call);
 
-private:
+protected:
 	void chatMessageReceived (LinphoneChatMessage *msg);
 	void imdnReceived (const std::string &text);
 	void isComposingReceived (const std::string &text);
 
 private:
-	void isComposingStateChanged (bool isComposing);
-	void isRemoteComposingStateChanged (bool isComposing);
-	void isComposingRefreshNeeded ();
+	void notifyChatMessageReceived (LinphoneChatMessage *msg);
+	void notifyStateChanged ();
+	void notifyUndecryptableMessageReceived (LinphoneChatMessage *msg);
+
+private:
+	/* IsComposingListener */
+	void onIsComposingStateChanged (bool isComposing) override;
+	void onIsRemoteComposingStateChanged (bool isComposing) override;
+	void onIsComposingRefreshNeeded () override;
 
 public:
-	LinphoneChatRoom *cBackPointer = nullptr;
 	LinphoneCore *core = nullptr;
 	LinphoneCall *call = nullptr;
-	LinphoneAddress *peerAddress = nullptr;
-	std::string peer;
+	ChatRoom::State state = ChatRoom::State::None;
+	Address peerAddress;
 	int unreadCount = -1;
 	bool isComposing = false;
 	bool remoteIsComposing = false;

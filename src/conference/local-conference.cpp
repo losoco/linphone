@@ -16,21 +16,62 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "conference-p.h"
-
 #include "local-conference.h"
+#include "participant-p.h"
+#include "xml/resource-lists.h"
+
+using namespace std;
+using namespace LinphonePrivate::Xsd::ResourceLists;
 
 LINPHONE_BEGIN_NAMESPACE
 
 // =============================================================================
 
-class LocalConferencePrivate : public ConferencePrivate {
-public:
-};
-
-// =============================================================================
-
 LocalConference::LocalConference (LinphoneCore *core, const Address &myAddress, CallListener *listener)
-	: Conference(*new LocalConferencePrivate, core, myAddress, listener) {}
+	: Conference(core, myAddress, listener) {
+	eventHandler = new LocalConferenceEventHandler(core, this);
+}
+
+LocalConference::~LocalConference () {
+	delete eventHandler;
+}
+
+// -----------------------------------------------------------------------------
+
+shared_ptr<Participant> LocalConference::addParticipant (const Address &addr, const CallSessionParams *params, bool hasMedia) {
+	shared_ptr<Participant> participant = findParticipant(addr);
+	if (participant)
+		return participant;
+	participant = make_shared<Participant>(addr);
+	participant->getPrivate()->createSession(*this, params, hasMedia, this);
+	participants.push_back(participant);
+	if (!activeParticipant)
+		activeParticipant = participant;
+	return participant;
+}
+
+void LocalConference::removeParticipant (const shared_ptr<const Participant> &participant) {
+	for (const auto &p : participants) {
+		if (participant->getAddress().equal(p->getAddress())) {
+			participants.remove(p);
+			return;
+		}
+	}
+}
+
+list<Address> LocalConference::parseResourceLists (string xmlBody) {
+	istringstream data(xmlBody);
+	unique_ptr<ResourceLists> rl = LinphonePrivate::Xsd::ResourceLists::parseResourceLists(data, Xsd::XmlSchema::Flags::dont_validate);
+	list<Address> addresses = list<Address>();
+	for (const auto &l : rl->getList()) {
+		for (const auto &entry : l.getEntry()) {
+			Address addr(entry.getUri());
+			if (entry.getDisplayName().present())
+				addr.setDisplayName(entry.getDisplayName().get());
+			addresses.push_back(addr);
+		}
+	}
+	return addresses;
+}
 
 LINPHONE_END_NAMESPACE

@@ -29,12 +29,13 @@ LINPHONE_BEGIN_NAMESPACE
 
 // =============================================================================
 
-void ParticipantPrivate::createSession (const Conference &conference, const shared_ptr<CallSessionParams> params, bool hasMedia, CallSessionListener *listener) {
-	if (hasMedia && (!params || dynamic_cast<const MediaSessionParams *>(params.get()))) {
+shared_ptr<CallSession> ParticipantPrivate::createSession (const Conference &conference, const CallSessionParams *params, bool hasMedia, CallSessionListener *listener) {
+	if (hasMedia && (!params || dynamic_cast<const MediaSessionParams *>(params))) {
 		session = make_shared<MediaSession>(conference, params, listener);
 	} else {
 		session = make_shared<CallSession>(conference, params, listener);
 	}
+	return session;
 }
 
 shared_ptr<CallSession> ParticipantPrivate::getSession () const {
@@ -44,27 +45,33 @@ shared_ptr<CallSession> ParticipantPrivate::getSession () const {
 // =============================================================================
 
 Participant::Participant (const Address &addr) : Object(*new ParticipantPrivate) {
-	L_D(Participant);
+	L_D();
 	d->addr = addr;
 }
 
 // -----------------------------------------------------------------------------
 
 const Address& Participant::getAddress () const {
-	L_D(const Participant);
+	L_D();
 	return d->addr;
 }
 
 // -----------------------------------------------------------------------------
 
 bool Participant::isAdmin () const {
-	L_D(const Participant);
+	L_D();
 	return d->isAdmin;
 }
 
 void Participant::setAdmin (bool isAdmin) {
-	L_D(Participant);
+	L_D();
 	d->isAdmin = isAdmin;
+}
+
+// =============================================================================
+
+ostream & operator<< (ostream &strm, const shared_ptr<Participant> &participant) {
+	return strm << "'" << participant->getAddress().asString() << "'";
 }
 
 LINPHONE_END_NAMESPACE

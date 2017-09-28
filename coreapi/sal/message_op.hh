@@ -8,8 +8,9 @@ class MessageOp: public SalOp, public MessageOpInterface {
 public:
 	MessageOp(Sal *sal): SalOp(sal) {}
 	
-	virtual int send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) override;
-	virtual int reply(SalReason reason) override {return SalOp::reply_message(reason);}
+// 	int send_message(const char *from, const char *to, const char *msg) override {return MessageOpInterface::send_message(from, to, msg);}
+	int send_message(const char *from, const char *to, const char* content_type, const char *msg, const char *peer_uri) override;
+	int reply(SalReason reason) override {return SalOp::reply_message(reason);}
 
 private:
 	virtual void fill_cbs() override;
