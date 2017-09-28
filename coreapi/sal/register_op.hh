@@ -1,7 +1,7 @@
 #ifndef _LINPHONE_SAL_REGISTER_OP_HH
 #define _LINPHONE_SAL_REGISTER_OP_HH
 
-#include "sal.hh"
+#include "sal_op.hh"
 
 class SalRegisterOp: public SalOp {
 public:

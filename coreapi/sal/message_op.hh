@@ -1,7 +1,7 @@
 #ifndef _LINPHONE_SAL_MASSAGE_OP_HH
 #define _LINPHONE_SAL_MASSAGE_OP_HH
 
-#include "sal.hh"
+#include "sal_op.hh"
 #include "message_op_interface.hh"
 
 class SalMessageOp: public SalOp, public SalMessageOpInterface {

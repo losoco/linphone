@@ -1,7 +1,7 @@
 #ifndef _LINPHONE_SAL_EVENT_OP_HH
 #define _LINPHONE_SAL_EVENT_OP_HH
 
-#include "sal.hh"
+#include "sal_op.hh"
 
 class SalEventOp: public SalOp {
 public:
